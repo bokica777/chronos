@@ -1,0 +1,36 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+secrets/
+
+# .NET
+**/bin/
+**/obj/
+*.user
+*.suo
+
+# Java
+**/target/
+*.class
+
+# Node / React
+**/node_modules/
+**/dist/
+**/.vite/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs and test output
+*.log
+coverage/
+test-results/
+
+# Local infrastructure state
+*.tfstate
+*.tfstate.*
+
