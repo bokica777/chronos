@@ -18,6 +18,9 @@ secrets/
 **/node_modules/
 **/dist/
 **/.vite/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
 
 # IDE and OS
 .idea/
@@ -33,4 +36,3 @@ test-results/
 # Local infrastructure state
 *.tfstate
 *.tfstate.*
-

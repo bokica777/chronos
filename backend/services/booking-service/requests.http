@@ -1,0 +1,56 @@
+### 1) Kreiranje rezervacije (ocekuje se 201 + Location header)
+POST http://localhost:8080/api/v1/bookings
+Content-Type: application/json
+
+{
+  "customerId": "11111111-1111-1111-1111-111111111111",
+  "providerId": "22222222-2222-2222-2222-222222222222",
+  "serviceId": "33333333-3333-3333-3333-333333333333",
+  "startTime": "2026-09-01T10:00:00",
+  "endTime": "2026-09-01T10:30:00",
+  "price": 2500.0,
+  "idempotencyKey": "test-key-001"
+}
+
+### 2) Isti zahtev ponovo - isti idempotencyKey (ocekuje se 409 Conflict)
+POST http://localhost:8080/api/v1/bookings
+Content-Type: application/json
+
+{
+  "customerId": "11111111-1111-1111-1111-111111111111",
+  "providerId": "22222222-2222-2222-2222-222222222222",
+  "serviceId": "33333333-3333-3333-3333-333333333333",
+  "startTime": "2026-09-01T10:00:00",
+  "endTime": "2026-09-01T10:30:00",
+  "price": 2500.0,
+  "idempotencyKey": "test-key-001"
+}
+
+### 3) Nevalidan zahtev - endTime pre startTime (ocekuje se 400 Bad Request)
+POST http://localhost:8080/api/v1/bookings
+Content-Type: application/json
+
+{
+  "customerId": "11111111-1111-1111-1111-111111111111",
+  "providerId": "22222222-2222-2222-2222-222222222222",
+  "serviceId": "33333333-3333-3333-3333-333333333333",
+  "startTime": "2026-09-01T10:30:00",
+  "endTime": "2026-09-01T10:00:00",
+  "price": 2500.0,
+  "idempotencyKey": "test-key-002"
+}
+
+### 4) Get rezervacije po ID-ju - zameni {id} sa id-jem iz odgovora na zahtev (1)
+GET http://localhost:8080/api/v1/bookings/00000000-0000-0000-0000-000000000000
+
+### 5) Get nepostojece rezervacije (ocekuje se 404 Not Found)
+GET http://localhost:8080/api/v1/bookings/99999999-9999-9999-9999-999999999999
+
+### 6) Lista rezervacija po korisniku
+GET http://localhost:8080/api/v1/bookings?customerId=11111111-1111-1111-1111-111111111111
+
+### 7) Otkazivanje rezervacije - zameni {id} sa id-jem iz odgovora na zahtev (1)
+POST http://localhost:8080/api/v1/bookings/00000000-0000-0000-0000-000000000000/cancel
+
+### 8) Otkazivanje vec otkazane rezervacije - ponovi zahtev (7) (ocekuje se 409 Conflict)
+POST http://localhost:8080/api/v1/bookings/00000000-0000-0000-0000-000000000000/cancel

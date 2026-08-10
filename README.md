@@ -21,9 +21,9 @@ Chronos/
 | API Gateway | ASP.NET Core | Jedinstvena ulazna tačka za frontend |
 | Auth | ASP.NET Core | Korisnici, autentifikacija i autorizacija |
 | Provider | ASP.NET Core | Pružaoci usluga, usluge i slobodni termini |
-| Booking | ASP.NET Core | Rezervacije i centralni v1/v2 rollout scenario |
+| Booking | Java / Spring Boot | Rezervacije i centralni v1/v2 rollout scenario |
 | Payment | ASP.NET Core | Plaćanja u test režimu |
-| Notification | Java / Spring Boot | Obrada događaja i slanje obaveštenja |
+| Notification | ASP.NET Core | Obrada događaja i slanje obaveštenja |
 
 ## Planirana infrastruktura
 
@@ -40,7 +40,7 @@ Chronos/
 Repozitorijum trenutno sadrži početni skelet. Naredni koraci su:
 
 1. definisanje domena, API ugovora i šeme podataka;
-2. inicijalizacija ASP.NET Core i Spring Boot projekata;
+2. inicijalizacija ASP.NET Core servisa i Spring Boot Booking servisa;
 3. povezivanje React aplikacije sa API Gateway-em;
 4. dodavanje lokalnog Docker Compose okruženja;
 5. Kubernetes, Helm i rollout konfiguracija.
