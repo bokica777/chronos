@@ -25,8 +25,12 @@ vite.config.d.ts
 # IDE and OS
 .idea/
 .vscode/
+.vs/
 .DS_Store
 Thumbs.db
+
+# Uploaded fajlovi (runtime podaci, ne izvorni kod)
+**/wwwroot/uploads/
 
 # Logs and test output
 *.log
