@@ -4,8 +4,24 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddChronosObservability();
 builder.Services.AddHttpClient();
 
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? throw new InvalidOperationException("Allowed origins not configured.");
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+
 var app = builder.Build();
 app.UseChronosObservability();
+app.UseCors("Frontend");
 
 app.MapGet("/", () => Results.Ok(new
 {
@@ -14,8 +30,8 @@ app.MapGet("/", () => Results.Ok(new
     note = "Frontend communicates only with this public entry point."
 }));
 
-// YARP reverse-proxy routes are added after the first API contracts are fixed.
-// The gateway must contain no business logic.
+app.MapReverseProxy();
+
 app.Run();
 
 public partial class Program;

@@ -2,6 +2,9 @@
   <ItemGroup>
     <Compile Include="..\..\building-blocks\Observability\*.cs" Link="Observability\%(Filename)%(Extension)" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Yarp.ReverseProxy" />
+  </ItemGroup>
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
