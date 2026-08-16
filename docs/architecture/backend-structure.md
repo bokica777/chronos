@@ -33,16 +33,20 @@ tada razvojna implementacija beleži objavljene događaje.
 
 ## Versioning
 
-Razdvojene su četiri vrste verzija:
+Razdvojene su tri vrste verzija:
 
-1. API ugovor, na primer `/api/v1/bookings` i `/api/v2/bookings`;
-2. Docker image, na primer `booking-api:1.0.0`;
-3. integration event schema version;
-4. EF Core migracije baze.
+1. Docker image, na primer `booking-api:1.0.0` i `booking-api:2.0.0`;
+2. integration event schema version;
+3. EF Core / Flyway migracije baze.
 
-Booking API već ima v1 i v2 ulazne tačke. V2 dodaje proveru preklapanja, dok oba toka
-koriste isti domen i persistence sloj. Deployment verzije će kasnije biti odvojeni
-image tag-ovi koje Argo Rollouts postepeno promoviše.
+Verzionisanje se ne radi kroz odvojene API rute (`/api/v1`, `/api/v2`) unutar iste
+aplikacije, već isključivo kroz Docker image tagove. Endpoint ostaje isti
+(`/api/v1/bookings`); novo ponašanje (npr. provera preklapanja u Booking servisu) ide
+u novu image verziju (`booking-api:2.0.0`), dok stara verzija (`booking-api:1.0.0`)
+ostaje dostupna kao "stable". Argo Rollouts postepeno prebacuje procenat saobraćaja
+sa stable na novu verziju na nivou pod-ova/deployment-a, nezavisno od aplikativnog
+koda. Ovo izbegava problem gde bi deo pod-ova (stariji) odgovarao 404 na rutu koju
+podržavaju samo noviji pod-ovi.
 
 ## Observability
 
