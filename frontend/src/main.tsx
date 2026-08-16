@@ -1,10 +1,7 @@
-import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./styles/global.css";
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+// Napomena: StrictMode namerno duplo pokrece efekte u dev rezimu radi hvatanja
+// bugova - ali to ne radi dobro sa Leaflet-om (direktno menja DOM), pa je iskljucen.
+createRoot(document.getElementById("root")!).render(<App />);
