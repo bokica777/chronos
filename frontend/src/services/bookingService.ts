@@ -4,16 +4,11 @@ import { httpClient } from "./api/httpClient";
 const basePath = "/api/v1/bookings";
 
 export const bookingService = {
-  getAll: (signal?: AbortSignal) => httpClient.get<Booking[]>(basePath, signal),
-  getById: (id: string, signal?: AbortSignal) =>
-    httpClient.get<Booking>(`${basePath}/${id}`, signal),
   create: (request: CreateBookingRequest) =>
     httpClient.post<Booking, CreateBookingRequest>(basePath, request),
-  createV2: (request: CreateBookingRequest) =>
-    httpClient.post<Booking, CreateBookingRequest>("/api/v2/bookings", request),
+  getMine: (signal?: AbortSignal) => httpClient.get<Booking[]>(`${basePath}/me`, signal),
+  getByProvider: (providerId: string, signal?: AbortSignal) =>
+    httpClient.get<Booking[]>(`${basePath}/provider/${providerId}`, signal),
   cancel: (id: string) =>
-    httpClient.patch<Booking, { status: "Cancelled" }>(`${basePath}/${id}`, {
-      status: "Cancelled",
-    }),
-  remove: (id: string) => httpClient.delete(`${basePath}/${id}`),
+    httpClient.post<Booking, Record<string, never>>(`${basePath}/${id}/cancel`, {}),
 };

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import rs.ftn.booking_service.domain.models.Booking;
+import rs.ftn.booking_service.domain.models.BookingStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,6 +17,10 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     boolean existsByIdempotencyKey(String idempotencyKey);
 
     List<Booking> findByCustomerId(UUID customerId);
+
+    // Koristi se za racunanje slobodnih/zauzetih termina na kalendaru -
+    // otkazane rezervacije se ne racunaju kao zauzet termin.
+    List<Booking> findByProviderIdAndStatusNot(UUID providerId, BookingStatus status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

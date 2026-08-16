@@ -8,6 +8,7 @@ import rs.ftn.booking_service.domain.exceptions.BookingNotFoundException;
 import rs.ftn.booking_service.domain.exceptions.BookingOverlapException;
 import rs.ftn.booking_service.domain.exceptions.DuplicateBookingException;
 import rs.ftn.booking_service.domain.models.Booking;
+import rs.ftn.booking_service.domain.models.BookingStatus;
 import rs.ftn.booking_service.domain.models.OutboxMessage;
 import rs.ftn.booking_service.domain.repositories.BookingRepository;
 import rs.ftn.booking_service.domain.repositories.OutboxMessageRepository;
@@ -37,8 +38,8 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public Booking createBooking(CreateBookingRequest request) {
-        log.info("Creating booking for customer {} and provider {}", request.customerId(), request.providerId());
+    public Booking createBooking(CreateBookingRequest request, UUID customerId) {
+        log.info("Creating booking for customer {} and provider {}", customerId, request.providerId());
 
         if (bookingRepository.existsByIdempotencyKey(request.idempotencyKey())) {
             log.warn("Duplicate booking rejected for idempotencyKey {}", request.idempotencyKey());
@@ -54,7 +55,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         Booking booking = new Booking(
-                request.customerId(),
+                customerId,
                 request.providerId(),
                 request.serviceId(),
                 request.startTime(),
@@ -80,9 +81,13 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional(readOnly = true)
-    public Booking getBooking(UUID bookingId) {
-        return bookingRepository.findById(bookingId)
+    public Booking getBookingForCustomer(UUID bookingId, UUID customerId) {
+        Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BookingNotFoundException(bookingId));
+        if (!booking.getCustomerId().equals(customerId)) {
+            throw new BookingNotFoundException(bookingId);
+        }
+        return booking;
     }
 
     @Override
@@ -92,12 +97,21 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Booking> listByProvider(UUID providerId) {
+        return bookingRepository.findByProviderIdAndStatusNot(providerId, BookingStatus.CANCELLED);
+    }
+
+    @Override
     @Transactional
-    public Booking cancelBooking(UUID bookingId) {
+    public Booking cancelBookingForCustomer(UUID bookingId, UUID customerId) {
         log.info("Cancelling booking {}", bookingId);
 
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BookingNotFoundException(bookingId));
+        if (!booking.getCustomerId().equals(customerId)) {
+            throw new BookingNotFoundException(bookingId);
+        }
         booking.cancel();
 
         BookingCancelledEvent event = new BookingCancelledEvent(

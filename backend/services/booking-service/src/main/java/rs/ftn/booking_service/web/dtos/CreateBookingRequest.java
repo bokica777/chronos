@@ -7,8 +7,9 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+// customerId namerno NIJE polje ovde - uvek se uzima iz JWT "sub" claim-a
+// ulogovanog korisnika (BookingController), nikad se ne veruje klijentu.
 public record CreateBookingRequest(
-        @NotNull UUID customerId,
         @NotNull UUID providerId,
         @NotNull UUID serviceId,
         @NotNull LocalDateTime startTime,
