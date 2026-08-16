@@ -18,6 +18,8 @@ public static class DependencyInjection
 
         services.AddDbContext<ProviderDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<IProviderRepository>(provider => provider.GetRequiredService<ProviderDbContext>());
+        services.AddScoped<IServiceRepository>(provider => provider.GetRequiredService<ProviderDbContext>());
+        services.AddScoped<ICategoryRepository>(provider => provider.GetRequiredService<ProviderDbContext>());
         services.AddSingleton<IEventPublisher, DevelopmentEventPublisher>();
         return services;
     }
