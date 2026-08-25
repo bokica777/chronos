@@ -42,6 +42,31 @@ public sealed class ProviderServiceImpl(
         return providers.Select(ToResponse).ToList();
     }
 
+    public async Task<List<ProviderResponse>> GetAllProvidersForAdminAsync(CancellationToken cancellationToken)
+    {
+        var providers = await providerRepository.GetAllForAdminAsync(cancellationToken);
+        return providers.Select(ToResponse).ToList();
+    }
+
+    public async Task<ProviderResponse> SetProviderVisibilityForAdminAsync(Guid providerId, bool isVisible, CancellationToken cancellationToken)
+    {
+        var provider = await providerRepository.FindByIdAsync(providerId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Provider {providerId} was not found.");
+
+        if (isVisible)
+        {
+            provider.Activate();
+        }
+        else
+        {
+            provider.Deactivate();
+        }
+
+        await providerRepository.SaveChangesAsync(cancellationToken);
+
+        return ToResponse(provider);
+    }
+
     public async Task<ProviderResponse> GetOrCreateMyProviderAsync(Guid ownerId, string displayName, CancellationToken cancellationToken)
     {
         var existing = await providerRepository.FindByOwnerIdAsync(ownerId, cancellationToken);

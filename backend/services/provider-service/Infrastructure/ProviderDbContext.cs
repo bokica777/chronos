@@ -59,6 +59,10 @@ public sealed class ProviderDbContext(DbContextOptions<ProviderDbContext> option
     public Task<List<ProviderProfile>> GetAllAsync(CancellationToken cancellationToken) =>
         Providers.Where(x => x.IsActive).ToListAsync(cancellationToken);
 
+    // Admin pregled - ukljucuje i deaktivirane provajdere (javna lista ih namerno krije).
+    public Task<List<ProviderProfile>> GetAllForAdminAsync(CancellationToken cancellationToken) =>
+        Providers.ToListAsync(cancellationToken);
+
     public async Task AddAsync(ProviderProfile provider, CancellationToken cancellationToken) =>
         await Providers.AddAsync(provider, cancellationToken);
 
@@ -79,6 +83,10 @@ public sealed class ProviderDbContext(DbContextOptions<ProviderDbContext> option
          where service.IsActive && provider.IsActive
          select service).ToListAsync(cancellationToken);
 
+    // Admin pregled - sve usluge svih provajdera, bez obzira na IsActive.
+    public Task<List<Service>> GetAllServicesForAdminAsync(CancellationToken cancellationToken) =>
+        Services.ToListAsync(cancellationToken);
+
     public async Task AddServiceAsync(Service service, CancellationToken cancellationToken) =>
         await Services.AddAsync(service, cancellationToken);
 
@@ -89,6 +97,10 @@ public sealed class ProviderDbContext(DbContextOptions<ProviderDbContext> option
 
     public Task<List<Category>> GetAllCategoriesAsync(CancellationToken cancellationToken) =>
         Categories.Where(x => x.IsActive).ToListAsync(cancellationToken);
+
+    // Admin pregled - i deaktivirane kategorije, da mogu ponovo da se aktiviraju.
+    public Task<List<Category>> GetAllCategoriesForAdminAsync(CancellationToken cancellationToken) =>
+        Categories.ToListAsync(cancellationToken);
 
     public async Task AddCategoryAsync(Category category, CancellationToken cancellationToken) =>
         await Categories.AddAsync(category, cancellationToken);

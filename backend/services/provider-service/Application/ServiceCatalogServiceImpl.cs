@@ -80,6 +80,31 @@ public sealed class ServiceCatalogServiceImpl(
         return ToResponse(service);
     }
 
+    public async Task<List<ServiceResponse>> GetAllServicesForAdminAsync(CancellationToken cancellationToken)
+    {
+        var services = await serviceRepository.GetAllServicesForAdminAsync(cancellationToken);
+        return services.Select(ToResponse).ToList();
+    }
+
+    public async Task<ServiceResponse> SetServiceVisibilityForAdminAsync(Guid serviceId, bool isVisible, CancellationToken cancellationToken)
+    {
+        var service = await serviceRepository.FindServiceByIdAsync(serviceId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Service {serviceId} was not found.");
+
+        if (isVisible)
+        {
+            service.Activate();
+        }
+        else
+        {
+            service.Deactivate();
+        }
+
+        await serviceRepository.SaveChangesAsync(cancellationToken);
+
+        return ToResponse(service);
+    }
+
     private async Task<Service> GetOwnedServiceAsync(Guid providerId, Guid serviceId, CancellationToken cancellationToken)
     {
         var service = await serviceRepository.FindServiceByIdAsync(serviceId, cancellationToken);

@@ -149,6 +149,31 @@ public sealed class ProviderController(
         return Ok(result);
     }
 
+    // Admin moderacija - vidi i deaktivirane provajdere, i moze da gasi/pali
+    // vidljivost bilo kog provajdera (za razliku od PATCH me/visibility koji je samo-uslužan).
+    [Authorize(Roles = "Admin")]
+    [HttpGet("admin")]
+    public async Task<ActionResult<List<ProviderResponse>>> GetAllForAdmin(CancellationToken cancellationToken)
+    {
+        var result = await providerService.GetAllProvidersForAdminAsync(cancellationToken);
+        return Ok(result);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPatch("{id:guid}/visibility")]
+    public async Task<ActionResult<ProviderResponse>> SetVisibilityForAdmin(Guid id, SetVisibilityRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await providerService.SetProviderVisibilityForAdminAsync(id, request.IsVisible, cancellationToken);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
     private Guid GetOwnerId()
     {
         var value = User.FindFirst(ClaimTypes.NameIdentifier)?.Value

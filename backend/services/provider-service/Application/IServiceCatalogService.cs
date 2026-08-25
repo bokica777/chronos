@@ -12,4 +12,6 @@ public interface IServiceCatalogService
     Task<List<ServiceResponse>> GetPublicServicesByProviderAsync(Guid providerId, CancellationToken cancellationToken);
     Task<List<ServiceResponse>> GetAllPublicServicesAsync(CancellationToken cancellationToken);
     Task<ServiceResponse> GetPublicServiceAsync(Guid serviceId, CancellationToken cancellationToken);
+    Task<List<ServiceResponse>> GetAllServicesForAdminAsync(CancellationToken cancellationToken);
+    Task<ServiceResponse> SetServiceVisibilityForAdminAsync(Guid serviceId, bool isVisible, CancellationToken cancellationToken);
 }

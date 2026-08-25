@@ -7,6 +7,8 @@ public interface IProviderService
     Task<ProviderResponse> CreateProviderAsync(CreateProviderRequest request, CancellationToken cancellationToken);
     Task<ProviderResponse> GetProviderAsync(Guid providerId, CancellationToken cancellationToken);
     Task<List<ProviderResponse>> GetAllProvidersAsync(CancellationToken cancellationToken);
+    Task<List<ProviderResponse>> GetAllProvidersForAdminAsync(CancellationToken cancellationToken);
+    Task<ProviderResponse> SetProviderVisibilityForAdminAsync(Guid providerId, bool isVisible, CancellationToken cancellationToken);
     Task<ProviderResponse> GetOrCreateMyProviderAsync(Guid ownerId, string displayName, CancellationToken cancellationToken);
     Task<ProviderResponse> UpdateMyProviderAsync(Guid ownerId, UpdateProviderRequest request, CancellationToken cancellationToken);
     Task<ProviderResponse> UpdateMyImageAsync(Guid ownerId, string imageUrl, CancellationToken cancellationToken);

@@ -32,6 +32,31 @@ public sealed class CategoryServiceImpl(ICategoryRepository categoryRepository) 
         return categories.Select(ToResponse).ToList();
     }
 
+    public async Task<List<CategoryResponse>> GetAllCategoriesForAdminAsync(CancellationToken cancellationToken)
+    {
+        var categories = await categoryRepository.GetAllCategoriesForAdminAsync(cancellationToken);
+        return categories.Select(ToResponse).ToList();
+    }
+
+    public async Task<CategoryResponse> SetCategoryVisibilityAsync(Guid categoryId, bool isVisible, CancellationToken cancellationToken)
+    {
+        var category = await categoryRepository.FindCategoryByIdAsync(categoryId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Category {categoryId} was not found.");
+
+        if (isVisible)
+        {
+            category.Activate();
+        }
+        else
+        {
+            category.Deactivate();
+        }
+
+        await categoryRepository.SaveChangesAsync(cancellationToken);
+
+        return ToResponse(category);
+    }
+
     private static CategoryResponse ToResponse(Category category) =>
         new(category.Id, category.Name, category.IconUrl, category.IsActive);
 }

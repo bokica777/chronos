@@ -38,4 +38,27 @@ public sealed class CategoryController(ICategoryService categoryService) : Contr
             return NotFound(new { message = ex.Message });
         }
     }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("admin")]
+    public async Task<ActionResult<List<CategoryResponse>>> GetAllForAdmin(CancellationToken cancellationToken)
+    {
+        var result = await categoryService.GetAllCategoriesForAdminAsync(cancellationToken);
+        return Ok(result);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPatch("{id:guid}/visibility")]
+    public async Task<ActionResult<CategoryResponse>> SetVisibility(Guid id, SetVisibilityRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await categoryService.SetCategoryVisibilityAsync(id, request.IsVisible, cancellationToken);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
 }
