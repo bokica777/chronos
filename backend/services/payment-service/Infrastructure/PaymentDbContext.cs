@@ -25,6 +25,16 @@ public sealed class PaymentDbContext(DbContextOptions<PaymentDbContext> options)
     public Task<Payment?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
         Payments.SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    // Ne oslanjamo se na jedinstvenost u bazi (nema unique indeksa na BookingId) -
+    // uzimamo najnoviji ako bi ih ikad slucajno bilo vise za istu rezervaciju.
+    public Task<Payment?> FindByBookingIdAsync(Guid bookingId, CancellationToken cancellationToken) =>
+        Payments.Where(x => x.BookingId == bookingId)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public Task<List<Payment>> GetAllAsync(CancellationToken cancellationToken) =>
+        Payments.OrderByDescending(x => x.CreatedAtUtc).ToListAsync(cancellationToken);
+
     public async Task AddAsync(Payment payment, CancellationToken cancellationToken) =>
         await Payments.AddAsync(payment, cancellationToken);
 

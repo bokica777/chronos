@@ -10,6 +10,15 @@ public sealed class PaymentServiceImpl(
 {
     public async Task<PaymentResponse> CreatePaymentAsync(CreatePaymentRequest request, CancellationToken cancellationToken)
     {
+        // Idempotentno - ako front pozove kreiranje vise puta za istu rezervaciju
+        // (npr. dupli klik na "Simuliraj plaćanje"), vraćamo postojeći zapis
+        // umesto da napravimo drugi Payment za istu rezervaciju.
+        var existing = await paymentRepository.FindByBookingIdAsync(request.BookingId, cancellationToken);
+        if (existing is not null)
+        {
+            return ToResponse(existing);
+        }
+
         var payment = new Payment(request.BookingId, request.Amount, request.Currency);
         await paymentRepository.AddAsync(payment, cancellationToken);
         await paymentRepository.SaveChangesAsync(cancellationToken);
@@ -40,6 +49,20 @@ public sealed class PaymentServiceImpl(
             ?? throw new KeyNotFoundException($"Payment {paymentId} was not found.");
 
         return ToResponse(payment);
+    }
+
+    public async Task<PaymentResponse> GetPaymentForBookingAsync(Guid bookingId, CancellationToken cancellationToken)
+    {
+        var payment = await paymentRepository.FindByBookingIdAsync(bookingId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Payment for booking {bookingId} was not found.");
+
+        return ToResponse(payment);
+    }
+
+    public async Task<List<PaymentResponse>> GetAllPaymentsForAdminAsync(CancellationToken cancellationToken)
+    {
+        var payments = await paymentRepository.GetAllAsync(cancellationToken);
+        return payments.Select(ToResponse).ToList();
     }
 
     private static PaymentResponse ToResponse(Payment payment) =>
