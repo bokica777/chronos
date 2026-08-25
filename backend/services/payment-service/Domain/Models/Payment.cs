@@ -1,7 +1,5 @@
 namespace PaymentDomain;
 
-public enum PaymentStatus { Pending, Completed, Failed, Refunded }
-
 public sealed class Payment
 {
     private Payment() { }

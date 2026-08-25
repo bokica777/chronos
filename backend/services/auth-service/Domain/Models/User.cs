@@ -1,12 +1,5 @@
 namespace AuthDomain;
 
-public enum UserRole
-{
-    Client,
-    Partner,
-    Admin
-}
-
 public sealed class User
 {
     private User() { }
@@ -30,6 +23,10 @@ public sealed class User
             ? throw new ArgumentException("Password hash is required.", nameof(passwordHash))
             : passwordHash;
     }
+
+    public void SetRole(UserRole role) => Role = role;
+
+    public void SetActive(bool isActive) => IsActive = isActive;
 
     public Guid Id { get; private set; }
     public string Email { get; private set; } = string.Empty;
