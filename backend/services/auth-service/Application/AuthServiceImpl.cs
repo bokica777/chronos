@@ -36,7 +36,7 @@ public sealed class AuthServiceImpl(
             Email = user.Email
         }, cancellationToken);
 
-        return new UserResponse(user.Id, user.Email, user.DisplayName, user.Role);
+        return ToResponse(user);
     }
 
     public async Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
@@ -50,7 +50,43 @@ public sealed class AuthServiceImpl(
             throw new UnauthorizedAccessException("Incorrect password.");
         }
 
+        if (!user.IsActive)
+        {
+            throw new UnauthorizedAccessException("This account has been deactivated.");
+        }
+
         var (token, expiresAtUtc) = tokenGenerator.GenerateToken(user.Id, user.Email, user.DisplayName, user.Role);
-        return new LoginResponse(token, expiresAtUtc, new UserResponse(user.Id, user.Email, user.DisplayName, user.Role));
+        return new LoginResponse(token, expiresAtUtc, ToResponse(user));
     }
+
+    public async Task<List<UserResponse>> GetAllUsersAsync(CancellationToken cancellationToken)
+    {
+        var users = await userRepository.GetAllAsync(cancellationToken);
+        return users.Select(ToResponse).ToList();
+    }
+
+    public async Task<UserResponse> UpdateUserRoleAsync(Guid userId, UserRole role, CancellationToken cancellationToken)
+    {
+        var user = await userRepository.FindByIdAsync(userId, cancellationToken)
+            ?? throw new KeyNotFoundException($"User {userId} was not found.");
+
+        user.SetRole(role);
+        await userRepository.SaveChangesAsync(cancellationToken);
+
+        return ToResponse(user);
+    }
+
+    public async Task<UserResponse> SetUserActiveAsync(Guid userId, bool isActive, CancellationToken cancellationToken)
+    {
+        var user = await userRepository.FindByIdAsync(userId, cancellationToken)
+            ?? throw new KeyNotFoundException($"User {userId} was not found.");
+
+        user.SetActive(isActive);
+        await userRepository.SaveChangesAsync(cancellationToken);
+
+        return ToResponse(user);
+    }
+
+    private static UserResponse ToResponse(User user) =>
+        new(user.Id, user.Email, user.DisplayName, user.Role, user.IsActive, user.CreatedAtUtc);
 }

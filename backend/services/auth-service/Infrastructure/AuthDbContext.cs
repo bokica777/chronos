@@ -29,6 +29,9 @@ public sealed class AuthDbContext(DbContextOptions<AuthDbContext> options)
     public Task<User?> FindByEmailAsync(string email, CancellationToken cancellationToken) =>
         Users.SingleOrDefaultAsync(x => x.Email == email, cancellationToken);
 
+    public Task<List<User>> GetAllAsync(CancellationToken cancellationToken) =>
+        Users.OrderBy(x => x.CreatedAtUtc).ToListAsync(cancellationToken);
+
     public async Task AddAsync(User user, CancellationToken cancellationToken) =>
         await Users.AddAsync(user, cancellationToken);
 
