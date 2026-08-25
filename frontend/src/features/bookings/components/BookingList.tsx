@@ -1,13 +1,17 @@
 import { EmptyState } from "../../../components/common/EmptyState";
 import type { Booking } from "../../../models/booking";
+import type { Payment } from "../../../models/payment";
 import { BookingCard } from "./BookingCard";
 
 type BookingListProps = {
   bookings: Booking[];
+  payments?: Record<string, Payment | null>;
   onCancel?: (id: string) => void;
+  onPay?: (id: string) => void;
+  payingBookingId?: string | null;
 };
 
-export function BookingList({ bookings, onCancel }: BookingListProps) {
+export function BookingList({ bookings, payments, onCancel, onPay, payingBookingId }: BookingListProps) {
   if (bookings.length === 0) {
     return (
       <EmptyState
@@ -20,7 +24,14 @@ export function BookingList({ bookings, onCancel }: BookingListProps) {
   return (
     <section className="card-grid">
       {bookings.map((booking) => (
-        <BookingCard key={booking.id} booking={booking} onCancel={onCancel} />
+        <BookingCard
+          key={booking.id}
+          booking={booking}
+          payment={payments?.[booking.id]}
+          onCancel={onCancel}
+          onPay={onPay}
+          isPaying={payingBookingId === booking.id}
+        />
       ))}
     </section>
   );

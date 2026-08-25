@@ -3,7 +3,9 @@ import { PageHeader } from "../../components/common/PageHeader";
 import { BookingList } from "../../features/bookings/components/BookingList";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import type { Booking } from "../../models/booking";
+import type { Payment } from "../../models/payment";
 import { bookingService } from "../../services/bookingService";
+import { paymentService } from "../../services/paymentService";
 import { providerService } from "../../services/providerService";
 import { serviceCatalogService } from "../../services/serviceCatalogService";
 import { useAuth } from "../../store/useAuth";
@@ -13,6 +15,8 @@ export function BookingsPage() {
 
   const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [payments, setPayments] = useState<Record<string, Payment | null>>({});
+  const [payingBookingId, setPayingBookingId] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
 
   useEffect(() => {
@@ -53,6 +57,17 @@ export function BookingsPage() {
 
         setBookings(enriched);
         setStatus("ready");
+
+        // Status placanja se dovlaci odvojeno i ne blokira prikaz liste - ako
+        // payment-service ne odgovori, rezervacije se svejedno vide.
+        const paymentEntries = await Promise.all(
+          enriched
+            .filter((booking) => booking.status !== "CANCELLED")
+            .map(async (booking) => [booking.id, await paymentService.getByBooking(booking.id, controller.signal)] as const),
+        ).catch(() => []);
+        if (!controller.signal.aborted) {
+          setPayments(Object.fromEntries(paymentEntries));
+        }
       })
       .catch(() => {
         if (!controller.signal.aborted) setStatus("error");
@@ -66,6 +81,27 @@ export function BookingsPage() {
     setBookings((current) =>
       current.map((booking) => (booking.id === id ? { ...booking, ...updated } : booking)),
     );
+  };
+
+  // "Simulacija" - jedan klik pokreće ceo tok kroz payment-service (kreiranje
+  // pa odmah završetak uplate), bez pravog platnog provajdera.
+  const handlePay = async (bookingId: string) => {
+    const booking = bookings.find((item) => item.id === bookingId);
+    if (!booking) return;
+
+    setPayingBookingId(bookingId);
+    try {
+      const created = await paymentService.create({
+        bookingId,
+        amount: booking.price,
+        currency: "RSD",
+      });
+      const completed =
+        created.status === "Pending" ? await paymentService.complete(created.id) : created;
+      setPayments((current) => ({ ...current, [bookingId]: completed }));
+    } finally {
+      setPayingBookingId(null);
+    }
   };
 
   if (!user) {
@@ -98,7 +134,13 @@ export function BookingsPage() {
         title="Moje rezervacije"
         description="Ovde su prikazane tvoje aktivne i prethodne rezervacije."
       />
-      <BookingList bookings={bookings} onCancel={handleCancel} />
+      <BookingList
+        bookings={bookings}
+        payments={payments}
+        onCancel={handleCancel}
+        onPay={handlePay}
+        payingBookingId={payingBookingId}
+      />
     </>
   );
 }

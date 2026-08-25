@@ -1,6 +1,7 @@
 import { Button } from "../../../components/common/Button";
 import { Card } from "../../../components/common/Card";
 import type { Booking } from "../../../models/booking";
+import type { Payment } from "../../../models/payment";
 import { formatDateTime } from "../../../utils/date";
 
 const statusLabels: Record<Booking["status"], string> = {
@@ -10,13 +11,25 @@ const statusLabels: Record<Booking["status"], string> = {
   COMPLETED: "Završeno",
 };
 
-type BookingCardProps = {
-  booking: Booking;
-  onCancel?: (id: string) => void;
+const paymentStatusLabels: Record<Payment["status"], string> = {
+  Pending: "Plaćanje u toku",
+  Completed: "Plaćeno",
+  Failed: "Plaćanje neuspešno",
+  Refunded: "Refundirano",
 };
 
-export function BookingCard({ booking, onCancel }: BookingCardProps) {
+type BookingCardProps = {
+  booking: Booking;
+  payment?: Payment | null;
+  onCancel?: (id: string) => void;
+  onPay?: (id: string) => void;
+  isPaying?: boolean;
+};
+
+export function BookingCard({ booking, payment, onCancel, onPay, isPaying }: BookingCardProps) {
   const canCancel = booking.status !== "CANCELLED" && booking.status !== "COMPLETED";
+  // Simulacija placanja nema smisla za otkazanu rezervaciju.
+  const canPay = booking.status !== "CANCELLED" && payment?.status !== "Completed";
 
   return (
     <Card>
@@ -28,11 +41,27 @@ export function BookingCard({ booking, onCancel }: BookingCardProps) {
         {booking.price} RSD
         {booking.penaltyAmount > 0 ? ` · penal ${booking.penaltyAmount} RSD` : ""}
       </p>
-      {canCancel && onCancel && (
-        <Button variant="danger" onClick={() => onCancel(booking.id)}>
-          Otkaži
-        </Button>
+      {payment && (
+        <span
+          className={`visibility-badge visibility-badge--${
+            payment.status === "Completed" ? "visible" : "hidden"
+          }`}
+        >
+          {paymentStatusLabels[payment.status]}
+        </span>
       )}
+      <div className="booking-card-actions">
+        {canPay && onPay && (
+          <Button variant="secondary" onClick={() => onPay(booking.id)} disabled={isPaying}>
+            {isPaying ? "Plaćanje u toku…" : "Simuliraj plaćanje"}
+          </Button>
+        )}
+        {canCancel && onCancel && (
+          <Button variant="danger" onClick={() => onCancel(booking.id)}>
+            Otkaži
+          </Button>
+        )}
+      </div>
     </Card>
   );
 }
