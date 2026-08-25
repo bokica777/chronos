@@ -6,11 +6,19 @@ import { useAuth } from "../../store/useAuth";
 import { AdminBookingsTab } from "./tabs/AdminBookingsTab";
 import { AdminCategoriesTab } from "./tabs/AdminCategoriesTab";
 import { AdminNotificationsTab } from "./tabs/AdminNotificationsTab";
+import { AdminPaymentsTab } from "./tabs/AdminPaymentsTab";
 import { AdminProvidersTab } from "./tabs/AdminProvidersTab";
 import { AdminServicesTab } from "./tabs/AdminServicesTab";
 import { AdminUsersTab } from "./tabs/AdminUsersTab";
 
-type AdminTab = "users" | "categories" | "providers" | "services" | "bookings" | "notifications";
+type AdminTab =
+  | "users"
+  | "categories"
+  | "providers"
+  | "services"
+  | "bookings"
+  | "notifications"
+  | "payments";
 
 const tabs: { id: AdminTab; label: string }[] = [
   { id: "users", label: "Korisnici" },
@@ -19,6 +27,7 @@ const tabs: { id: AdminTab; label: string }[] = [
   { id: "services", label: "Usluge" },
   { id: "bookings", label: "Rezervacije" },
   { id: "notifications", label: "Obaveštenja" },
+  { id: "payments", label: "Plaćanja" },
 ];
 
 type Stats = {
@@ -28,6 +37,7 @@ type Stats = {
   services: number;
   bookings: number;
   notifications: number;
+  payments: number;
 };
 
 export function AdminPage() {
@@ -48,8 +58,9 @@ export function AdminPage() {
       adminService.services.getAll(controller.signal),
       adminService.bookings.getAll(controller.signal),
       adminService.notifications.getAll(controller.signal),
+      adminService.payments.getAll(controller.signal),
     ])
-      .then(([users, categories, providers, services, bookings, notifications]) => {
+      .then(([users, categories, providers, services, bookings, notifications, payments]) => {
         setStats({
           users: users.length,
           categories: categories.length,
@@ -57,6 +68,7 @@ export function AdminPage() {
           services: services.length,
           bookings: bookings.length,
           notifications: notifications.length,
+          payments: payments.length,
         });
       })
       .catch(() => {
@@ -108,6 +120,10 @@ export function AdminPage() {
             <p className="admin-stat-value">{stats.notifications}</p>
             <p className="admin-stat-label">Obaveštenja</p>
           </div>
+          <div className="card admin-stat-card">
+            <p className="admin-stat-value">{stats.payments}</p>
+            <p className="admin-stat-label">Plaćanja</p>
+          </div>
         </div>
       )}
 
@@ -133,6 +149,7 @@ export function AdminPage() {
         {activeTab === "services" && <AdminServicesTab />}
         {activeTab === "bookings" && <AdminBookingsTab />}
         {activeTab === "notifications" && <AdminNotificationsTab />}
+        {activeTab === "payments" && <AdminPaymentsTab />}
       </div>
     </>
   );

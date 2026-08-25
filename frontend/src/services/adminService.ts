@@ -1,6 +1,7 @@
 import type { Booking } from "../models/booking";
 import type { Category } from "../models/category";
 import type { Notification } from "../models/notification";
+import type { Payment } from "../models/payment";
 import type { Provider } from "../models/provider";
 import type { Service } from "../models/service";
 import type { User, UserRole } from "../models/user";
@@ -39,5 +40,8 @@ export const adminService = {
   notifications: {
     getAll: (signal?: AbortSignal) =>
       httpClient.get<Notification[]>("/api/v1/notifications/admin/all", signal),
+  },
+  payments: {
+    getAll: (signal?: AbortSignal) => httpClient.get<Payment[]>("/api/v1/payments/admin/all", signal),
   },
 };
