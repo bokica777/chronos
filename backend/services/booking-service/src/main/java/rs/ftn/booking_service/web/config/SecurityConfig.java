@@ -17,9 +17,15 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.List;
 
 // Booking-service nezavisno proverava JWT token isim deljenim HMAC kljucem
 // koji koriste auth-service (izdaje token) i provider-service (vec ga proverava
@@ -45,10 +51,30 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         // Javni kalendar dostupnosti - gost mora da vidi zauzete termine i bez prijave.
                         .requestMatchers("/api/v1/bookings/provider/**").permitAll()
+                        // Admin pregled svih rezervacija na platformi.
+                        .requestMatchers("/api/v1/bookings/admin/**").hasRole("Admin")
                         .anyRequest().authenticated()
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(jwtDecoder)));
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt
+                        .decoder(jwtDecoder)
+                        .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                ));
         return http.build();
+    }
+
+    // ASP.NET (auth-service) upisuje ulogu pod dugim ClaimTypes.Role URI-jem, ne pod
+    // kratkim "role" - zato citamo bas taj kljuc i mapiramo ga u Spring "ROLE_x" autoritet
+    // da bi .hasRole(...) mogao da radi deklarativno umesto rucne provere u kontroleru.
+    private static final String ROLE_CLAIM = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+
+    private Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter() {
+        return jwt -> {
+            String role = jwt.getClaimAsString(ROLE_CLAIM);
+            Collection<GrantedAuthority> authorities = role == null
+                    ? List.of()
+                    : List.of(new SimpleGrantedAuthority("ROLE_" + role));
+            return new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken(jwt, authorities);
+        };
     }
 
     @Bean

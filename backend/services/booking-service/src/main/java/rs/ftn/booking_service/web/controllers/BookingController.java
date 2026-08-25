@@ -66,6 +66,17 @@ public class BookingController {
         return responses;
     }
 
+    // Admin pregled - sve rezervacije na platformi (zastita hasRole("Admin") je u SecurityConfig).
+    @GetMapping("/admin/all")
+    public List<BookingResponse> listAllForAdmin() {
+        List<Booking> bookings = bookingService.listAll();
+        List<BookingResponse> responses = new ArrayList<>();
+        for (Booking booking : bookings) {
+            responses.add(BookingResponse.fromDomain(booking));
+        }
+        return responses;
+    }
+
     @PostMapping("/{id}/cancel")
     public BookingResponse cancelBooking(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         Booking booking = bookingService.cancelBookingForCustomer(id, currentUserId(jwt));

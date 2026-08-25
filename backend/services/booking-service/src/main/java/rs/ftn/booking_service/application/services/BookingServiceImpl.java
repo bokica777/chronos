@@ -103,6 +103,12 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Booking> listAll() {
+        return bookingRepository.findAll();
+    }
+
+    @Override
     @Transactional
     public Booking cancelBookingForCustomer(UUID bookingId, UUID customerId) {
         log.info("Cancelling booking {}", bookingId);

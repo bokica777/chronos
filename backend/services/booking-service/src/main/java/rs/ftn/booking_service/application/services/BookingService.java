@@ -19,5 +19,8 @@ public interface BookingService {
 
     List<Booking> listByProvider(UUID providerId);
 
+    // Admin pregled - sve rezervacije na platformi, bez filtera.
+    List<Booking> listAll();
+
     Booking cancelBookingForCustomer(UUID bookingId, UUID customerId);
 }
