@@ -12,7 +12,9 @@ Specifikacija predviđa 6 mikroservisa: Auth, Provider, Booking, Payment, **Noti
 - ✅ API Gateway (YARP) — rutira ka svih pet servisa.
 - ✅ **Notification servis — sada postoji.** Java/Spring Boot servis koji sluša `notification.booking-events` queue (`booking.*` routing key na `booking.events` exchange-u), obrađuje `booking.created`/`booking.cancelled` evente koje booking-service već objavljuje kroz outbox, i beleži ih u sopstvenu bazu (`NotificationDb`). Slanje je za sada simulirano (loguje se, nema pravog SMTP naloga) kroz zamenjiv `NotificationSender` interfejs — arhitektonski spreman za pravi email provajder kasnije. Admin panel ima nov tab "Obaveštenja" koji to i pokazuje.
 
-Funkcionalno, aplikacija radi end-to-end: registracija/login sa ulogama (Client/Partner/Admin), partner kreira profil i usluge sa slikama i lokacijom na mapi, klijent pretražuje, zakazuje termin, JWT osigurava da ne može da zakazuje u tuđe ime, a sada postoji i admin panel za moderaciju korisnika, kategorija, provajdera, usluga i pregled svih rezervacija.
+Funkcionalno, aplikacija radi end-to-end: registracija/login sa ulogama (Client/Partner/Admin), partner kreira profil i usluge sa slikama i lokacijom na mapi, klijent pretražuje, zakazuje termin, JWT osigurava da ne može da zakazuje u tuđe ime, a sada postoji i admin panel za moderaciju korisnika, kategorija, provajdera, usluga, pregled svih rezervacija, obaveštenja i plaćanja.
+
+Payment servis je sada povezan sa tokom rezervacije (frontend orkestrira - nema sinhronog REST poziva iz booking-service ka payment-service): posle rezervacije korisnik na stranici "Moje rezervacije" klikom na "Simuliraj plaćanje" pokreće kreiranje pa odmah završetak uplate. Payment servis je dobio i JWT zaštitu (ranije nije imao nikakvu) i admin-only pregled svih uplata.
 
 Ono što specifikacija identifikuje kao **suštinu diplomskog rada — Docker, Kubernetes, Argo Rollouts, CI/CD, observability, v1/v2 canary rollout — trenutno je na 0%.** Cela funkcionalna aplikacija je gotova, ali deo koji dokazuje temu diplomskog rada (progresivni rollout) tek treba da počne.
 
@@ -47,7 +49,7 @@ Specifikacija je ostavila 8 otvorenih arhitektonskih odluka sa preporučenim opc
 
 - ✅ O2 (konkurentno zakazivanje) — rešeno pesimističkim zaključavanjem, po preporuci.
 - ✅ Event publishing (outbox) — rešeno transakcionim outbox šablonom, po preporuci opcije A.
-- ✅ Autentikacija po servisu — svaki servis nezavisno validira JWT (deljeni ključ), u duhu preporuke, samo simetrično umesto asimetrično.
+- ✅ Autentikacija po servisu — svaki servis nezavisno validira JWT (deljeni ključ), u duhu preporuke, samo simetrično umesto asimetrično. (Payment servis ovo do sada nije imao uopšte - dodato u ovom koraku zajedno sa povezivanjem na tok rezervacije.)
 - ✅ Database-per-service — potpuno ispoštovano.
 - ✅ Soft delete umesto hard delete — dosledno primenjeno na sve entitete (Category, ProviderProfile, Service, User) baš zbog cross-service referenci koje bi ostale "viseće" pri fizičkom brisanju.
 - ⛔ Preostale odluke vezane za deployment/rollout (verzionisanje, routing između v1/v2, metrika za odlučivanje o promociji rollouta) — nisu ni mogle biti rešene jer im prethodi Docker/K8s deo koji još ne postoji.
@@ -58,4 +60,4 @@ Funkcionalna aplikacija (Faze 0–3) je čvrsta i u velikoj meri prati specifika
 
 Ono što nedostaje da bi rad bio kompletan po sopstvenoj specifikaciji je tačno ono što spec naziva "srž rada": Docker slike, K8s manifesti, Argo Rollouts canary, v1/v2 razdvajanje Booking servisa i osnovna observability priča koja pokazuje *zašto* je canary bolji od običnog rollinga. Preporuka: sledeći koraci treba da idu tim redom — prvo Dockerfile + v1/v2 razdvajanje Booking servisa (preduslov za sve ostalo), zatim K8s manifesti, pa Argo Rollouts, na kraju metrike/observability koje daju rollout-u signal za promociju/rollback.
 
-Sitniji, ne-blokirajući gapovi vredni beleženja: `/api/v1/bookings/provider/{id}` je javan endpoint i vraća `customerId` (PII curenje), nema paginacije nigde u sistemu, i ne postoji nijedan unit/integration test.
+Sitniji, ne-blokirajući gapovi vredni beleženja: `/api/v1/bookings/provider/{id}` je javan endpoint i vraća `customerId` (PII curenje), nema paginacije nigde u sistemu, ne postoji nijedan unit/integration test, i deljena `.NET` `IEventPublisher` infrastruktura (`building-blocks/Messaging`, koju koriste auth/provider/payment) i dalje ima samo `DevelopmentEventPublisher` koji loguje događaje umesto da ih stvarno šalje na RabbitMQ - `PaymentCompleted` event se, iako je već programiran da se objavljuje pri završetku uplate, trenutno gubi u logu. Pravi RabbitMQ adapter za ovu granu (za razliku od Java booking-service koji ga već ima) ostaje otvoren posao.
