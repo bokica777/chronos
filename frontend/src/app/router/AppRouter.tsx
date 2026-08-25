@@ -1,5 +1,6 @@
 import { AppLayout } from "../../layouts/AppLayout";
 import { AuthLayout } from "../../layouts/AuthLayout";
+import { AdminPage } from "../../pages/admin/AdminPage";
 import { BookingsPage } from "../../pages/bookings/BookingsPage";
 import { HomePage } from "../../pages/home/HomePage";
 import { LoginPage } from "../../pages/login/LoginPage";
@@ -55,6 +56,8 @@ export function AppRouter() {
         return <BookingsPage />;
       case routes.manageServices:
         return <ManageServicesPage />;
+      case routes.admin:
+        return <AdminPage />;
       case routes.profile:
         return <ProfilePage />;
       default:

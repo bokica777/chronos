@@ -1382,6 +1382,83 @@
   background: color-mix(in srgb, var(--color-danger) 10%, white 90%);
 }
 
+.admin-stats-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.admin-stat-card {
+  padding: 1.1rem;
+  text-align: center;
+}
+
+.admin-stat-value {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.admin-stat-label {
+  margin: 0.2rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 1000px) {
+  .admin-stats-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.75rem;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.75rem;
+}
+
+.admin-tab-button {
+  border: 0;
+  background: transparent;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.admin-tab-button.is-active {
+  color: white;
+  background: var(--color-primary);
+}
+
+.admin-tab-panel {
+  min-height: 200px;
+}
+
+.admin-user-actions {
+  align-items: center;
+}
+
+.admin-user-actions select {
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  font-size: 0.95rem;
+}
+
 .profile-view-fields {
   display: grid;
   gap: 1.25rem;

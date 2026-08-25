@@ -5,6 +5,7 @@ export const routes = {
   services: "/services",
   serviceDetail: (id: string) => `/services/${id}`,
   manageServices: "/manage/services",
+  admin: "/admin",
   profile: "/profile",
   bookings: "/bookings",
   login: "/login",

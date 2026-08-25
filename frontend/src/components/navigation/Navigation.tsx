@@ -38,13 +38,19 @@ export function Navigation() {
           </a>
           {user ? (
             <>
-              {user.role === "Partner" ? (
+              {user.role === "Partner" && (
                 <a href={routes.manageServices} onClick={() => setIsOpen(false)}>
                   Menadžer usluga
                 </a>
-              ) : (
+              )}
+              {user.role === "Client" && (
                 <a href={routes.bookings} onClick={() => setIsOpen(false)}>
                   Moje rezervacije
+                </a>
+              )}
+              {user.role === "Admin" && (
+                <a href={routes.admin} onClick={() => setIsOpen(false)}>
+                  Admin panel
                 </a>
               )}
               <a href={routes.profile} onClick={() => setIsOpen(false)}>

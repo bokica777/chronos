@@ -5,6 +5,9 @@ export interface User {
   email: string;
   displayName: string;
   role: UserRole;
+  // Prisutno samo u odgovorima gde ih backend salje (npr. admin lista korisnika).
+  isActive?: boolean;
+  createdAt?: string;
 }
 
 export interface LoginRequest {
