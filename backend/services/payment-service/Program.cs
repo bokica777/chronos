@@ -4,12 +4,19 @@ using Microsoft.IdentityModel.Tokens;
 using Observability;
 using PaymentApplication;
 using PaymentInfrastructure;
+using Stripe;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddChronosObservability();
+
+// Test (sandbox) Stripe kljuc - vidi appsettings.Development.json. Jedan
+// StripeClient se deli za ceo servis (thread-safe, preporuceno od Stripe-a).
+var stripeSecretKey = builder.Configuration["Stripe:SecretKey"]
+    ?? throw new InvalidOperationException("Stripe:SecretKey is missing.");
+builder.Services.AddSingleton(new StripeClient(stripeSecretKey));
 
 // Isti deljeni HMAC kljuc kao auth-service/provider-service/booking-service -
 // nezavisna provera tokena, bez poziva ka auth-service-u.
