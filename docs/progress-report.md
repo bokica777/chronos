@@ -14,7 +14,9 @@ Specifikacija predviđa 6 mikroservisa: Auth, Provider, Booking, Payment, **Noti
 
 Funkcionalno, aplikacija radi end-to-end: registracija/login sa ulogama (Client/Partner/Admin), partner kreira profil i usluge sa slikama i lokacijom na mapi, klijent pretražuje, zakazuje termin, JWT osigurava da ne može da zakazuje u tuđe ime, a sada postoji i admin panel za moderaciju korisnika, kategorija, provajdera, usluga, pregled svih rezervacija, obaveštenja i plaćanja.
 
-Payment servis je sada povezan sa tokom rezervacije (frontend orkestrira - nema sinhronog REST poziva iz booking-service ka payment-service): posle rezervacije korisnik na stranici "Moje rezervacije" klikom na "Simuliraj plaćanje" pokreće kreiranje pa odmah završetak uplate. Payment servis je dobio i JWT zaštitu (ranije nije imao nikakvu) i admin-only pregled svih uplata.
+Payment servis je sada povezan sa tokom rezervacije (frontend orkestrira - nema sinhronog REST poziva iz booking-service ka payment-service): posle rezervacije korisnik na stranici "Moje rezervacije" pokreće plaćanje. Payment servis je dobio i JWT zaštitu (ranije nije imao nikakvu) i admin-only pregled svih uplata.
+
+**Plaćanje je od ovog koraka pravi Stripe Checkout (test mod/sandbox), ne više čista simulacija.** Klik pokreće Stripe Checkout sesiju (Stripe.net SDK), korisnik se prebacuje na pravu Stripe stranicu i unosi standardni test broj kartice (`4242 4242 4242 4242`), pa se vraća na `/bookings` gde se plaćanje potvrđuje - i odmah pri povratku (`confirm-stripe` ruta) i nezavisno preko Stripe webhook-a (`webhooks/stripe`, potpis se proverava HMAC-om). Naplata ide u EUR po fiksnom kursu (RSD ima poznatu nedoslednost oko decimala kod Stripe-a) - ostatak aplikacije i dalje prikazuje cene u RSD. Detaljno objašnjeno u `docs/payment-flow-notes.md`, uključujući uputstvo za lokalno testiranje webhook-a preko Stripe CLI-a.
 
 Ono što specifikacija identifikuje kao **suštinu diplomskog rada — Docker, Kubernetes, Argo Rollouts, CI/CD, observability, v1/v2 canary rollout — trenutno je na 0%.** Cela funkcionalna aplikacija je gotova, ali deo koji dokazuje temu diplomskog rada (progresivni rollout) tek treba da počne.
 
