@@ -9,3 +9,10 @@ export interface Payment {
   currency: string;
   status: PaymentStatus;
 }
+
+// Odgovor pri pokretanju pravog Stripe Checkout toka - front redirektuje
+// korisnika na checkoutUrl (Stripe-om hostovanu stranicu).
+export interface StripeCheckoutResponse {
+  sessionId: string;
+  checkoutUrl: string;
+}

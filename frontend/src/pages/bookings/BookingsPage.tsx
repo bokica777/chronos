@@ -76,6 +76,27 @@ export function BookingsPage() {
     return () => controller.abort();
   }, [user]);
 
+  // Korisnik se vratio sa Stripe Checkout stranice (success_url/cancel_url).
+  // Webhook je pouzdaniji izvor istine, ali ovde odmah potvrdjujemo da ne
+  // cekamo na njega dok korisnik gleda ekran.
+  useEffect(() => {
+    if (!user) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const paymentResult = params.get("payment");
+    const paymentId = params.get("paymentId");
+    if (!paymentResult || !paymentId) return;
+
+    // Uklanjamo query parametre odmah da se potvrda ne bi ponovila pri refresh-u.
+    window.history.replaceState(null, "", window.location.pathname);
+
+    if (paymentResult === "success") {
+      paymentService.confirmStripe(paymentId).then((updated) => {
+        setPayments((current) => ({ ...current, [updated.bookingId]: updated }));
+      });
+    }
+  }, [user]);
+
   const handleCancel = async (id: string) => {
     const updated = await bookingService.cancel(id);
     setBookings((current) =>
@@ -83,8 +104,9 @@ export function BookingsPage() {
     );
   };
 
-  // "Simulacija" - jedan klik pokreće ceo tok kroz payment-service (kreiranje
-  // pa odmah završetak uplate), bez pravog platnog provajdera.
+  // Pravi Stripe Checkout tok: prvo kreiramo Payment zapis (ili dobijemo
+  // postojeći), pa ako još nije završen, redirektujemo korisnika na Stripe-om
+  // hostovanu stranicu za plaćanje test karticom.
   const handlePay = async (bookingId: string) => {
     const booking = bookings.find((item) => item.id === bookingId);
     if (!booking) return;
@@ -96,9 +118,14 @@ export function BookingsPage() {
         amount: booking.price,
         currency: "RSD",
       });
-      const completed =
-        created.status === "Pending" ? await paymentService.complete(created.id) : created;
-      setPayments((current) => ({ ...current, [bookingId]: completed }));
+
+      if (created.status !== "Pending") {
+        setPayments((current) => ({ ...current, [bookingId]: created }));
+        return;
+      }
+
+      const checkout = await paymentService.startCheckout(created.id);
+      window.location.href = checkout.checkoutUrl;
     } finally {
       setPayingBookingId(null);
     }
