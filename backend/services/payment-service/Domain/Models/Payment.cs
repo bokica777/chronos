@@ -22,6 +22,16 @@ public sealed class Payment
     public PaymentStatus Status { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
+    // ID Stripe Checkout Session-a povezane sa ovim placanjem - null dok se ne
+    // pokrene Stripe checkout tok. Cuva se da bismo, kad se korisnik vrati sa
+    // Stripe stranice (ili kad stigne webhook), znali koju sesiju da proverimo.
+    public string? StripeSessionId { get; private set; }
+
+    public void AttachStripeSession(string sessionId)
+    {
+        StripeSessionId = sessionId;
+    }
+
     public void Complete()
     {
         if (Status != PaymentStatus.Pending)
