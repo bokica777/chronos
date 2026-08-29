@@ -92,6 +92,14 @@ namespace ProviderService.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("WorkingHoursEnd")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)");
+
+                    b.Property<string>("WorkingHoursStart")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)");
+
                     b.HasKey("Id");
 
                     b.ToTable("Providers", (string)null);
