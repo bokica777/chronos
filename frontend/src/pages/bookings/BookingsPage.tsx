@@ -4,6 +4,8 @@ import { BookingList } from "../../features/bookings/components/BookingList";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import type { Booking } from "../../models/booking";
 import type { Payment } from "../../models/payment";
+import type { Provider } from "../../models/provider";
+import type { Service } from "../../models/service";
 import { bookingService } from "../../services/bookingService";
 import { paymentService } from "../../services/paymentService";
 import { providerService } from "../../services/providerService";
@@ -15,6 +17,8 @@ export function BookingsPage() {
 
   const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [providers, setProviders] = useState<Record<string, Provider>>({});
+  const [services, setServices] = useState<Record<string, Service>>({});
   const [payments, setPayments] = useState<Record<string, Payment | null>>({});
   const [payingBookingId, setPayingBookingId] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
@@ -30,32 +34,35 @@ export function BookingsPage() {
     bookingService
       .getMine(controller.signal)
       .then(async (result) => {
-        // Booking servis zna samo ID-jeve provajdera/usluge - imena dovlačimo
-        // naknadno sa provider-service da bi lista bila čitljiva.
+        // Booking servis zna samo ID-jeve provajdera/usluge - pune podatke
+        // dovlačimo naknadno sa provider-service, da bi kartica mogla da
+        // prikaže sve detalje bez dodatnog klika.
         const providerIds = [...new Set(result.map((booking) => booking.providerId))];
-        const providerNames = new Map<string, string>();
-        const providerServices = new Map<string, { id: string; name: string }[]>();
+        const providersById: Record<string, Provider> = {};
+        const servicesById: Record<string, Service> = {};
 
         await Promise.all(
           providerIds.map(async (providerId) => {
-            const [provider, services] = await Promise.all([
+            const [provider, providerServices] = await Promise.all([
               providerService.getById(providerId, controller.signal),
               serviceCatalogService.getByProvider(providerId, controller.signal),
             ]);
-            providerNames.set(providerId, provider.name);
-            providerServices.set(providerId, services);
+            providersById[providerId] = provider;
+            providerServices.forEach((service) => {
+              servicesById[service.id] = service;
+            });
           }),
         );
 
         const enriched = result.map((booking) => ({
           ...booking,
-          providerName: providerNames.get(booking.providerId),
-          serviceName: providerServices
-            .get(booking.providerId)
-            ?.find((service) => service.id === booking.serviceId)?.name,
+          providerName: providersById[booking.providerId]?.name,
+          serviceName: servicesById[booking.serviceId]?.name,
         }));
 
         setBookings(enriched);
+        setProviders(providersById);
+        setServices(servicesById);
         setStatus("ready");
 
         // Status placanja se dovlaci odvojeno i ne blokira prikaz liste - ako
@@ -163,6 +170,8 @@ export function BookingsPage() {
       />
       <BookingList
         bookings={bookings}
+        providers={providers}
+        services={services}
         payments={payments}
         onCancel={handleCancel}
         onPay={handlePay}
