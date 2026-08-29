@@ -31,11 +31,16 @@ input {
 .app-layout {
   display: grid;
   min-height: 100vh;
-  grid-template-rows: auto 1fr auto;
+  /* minmax(0, 1fr) umesto golog 1fr - bez toga sadrzaj cija je prirodna visina
+     veca od dostupnog prostora (npr. duga lista rezervacija) moze naterati
+     grid red da se "razvuce" preko footer reda umesto da normalno skroluje,
+     pa footer izgleda izduzeno/pomereno. */
+  grid-template-rows: auto minmax(0, 1fr) auto;
   padding-top: calc(var(--header-height) + 0.75rem);
 }
 
 .page-container {
+  min-height: 0;
   width: min(var(--page-width), calc(100% - 2rem));
   margin-inline: auto;
   padding-top: clamp(1rem, 3vw, 2rem);
@@ -80,6 +85,7 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   gap: 1.5rem;
   min-height: var(--footer-height);
   padding-inline: 1.5rem;
