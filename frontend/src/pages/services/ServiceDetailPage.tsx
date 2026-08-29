@@ -143,12 +143,12 @@ export function ServiceDetailPage({ serviceId }: { serviceId: string }) {
         </div>
 
         <div className="service-detail-booking">
-          <h3>Zakaži termin</h3>
           <BookingForm
             service={service}
             providerId={provider.id}
             workingHoursStart={provider.workingHoursStart}
             workingHoursEnd={provider.workingHoursEnd}
+            title="Zakaži termin"
           />
         </div>
       </div>

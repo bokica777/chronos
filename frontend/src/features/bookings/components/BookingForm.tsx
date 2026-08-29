@@ -12,6 +12,9 @@ type BookingFormProps = {
   providerId: string;
   workingHoursStart?: string;
   workingHoursEnd?: string;
+  // Kad je prosleđen, prikazuje se kao naslov u istom redu sa dugmadima
+  // Potvrdi/Otkaži (npr. "Zakaži termin" na ServiceDetailPage).
+  title?: string;
 };
 
 // Podrazumevano radno vreme ako partner nije popunio svoje u profilu.
@@ -90,7 +93,7 @@ function computeSlots(
 // "Zakaži" dugme -> kalendar (mesecni prikaz, slobodni/zauzeti dani) -> grid
 // termina za izabrani dan, u koracima jednakim trajanju usluge. Koristi se i
 // na ProviderDetailPage (po usluzi u listi) i na ServiceDetailPage.
-export function BookingForm({ service, providerId, workingHoursStart, workingHoursEnd }: BookingFormProps) {
+export function BookingForm({ service, providerId, workingHoursStart, workingHoursEnd, title }: BookingFormProps) {
   const { user } = useAuth();
   const startMinutes = parseTimeToMinutes(workingHoursStart, DEFAULT_START_MINUTES);
   const endMinutes = parseTimeToMinutes(workingHoursEnd, DEFAULT_END_MINUTES);
@@ -101,6 +104,7 @@ export function BookingForm({ service, providerId, workingHoursStart, workingHou
   const [selectedMinutes, setSelectedMinutes] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isBooked, setIsBooked] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -167,7 +171,13 @@ export function BookingForm({ service, providerId, workingHoursStart, workingHou
         price: service.price,
         idempotencyKey: crypto.randomUUID(),
       });
-      window.location.href = routes.bookings;
+      // Kratka potvrda pre redirekta, da korisnik vidi da je zakazivanje uspelo
+      // umesto da stranica "iznenada" nestane.
+      setIsBooked(true);
+      window.setTimeout(() => {
+        window.location.href = routes.bookings;
+      }, 1000);
+      return;
     } catch (err) {
       const problem = err as ApiProblem;
       setError(
@@ -180,8 +190,34 @@ export function BookingForm({ service, providerId, workingHoursStart, workingHou
     }
   };
 
+  if (isBooked) {
+    return (
+      <div className="booking-success-banner">
+        <span className="booking-success-icon">✓</span>
+        <p>Uspešno ste zakazali termin! Prebacujemo vas na Moje rezervacije…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="booking-picker">
+      <div className="booking-form-header">
+        {title && <h3>{title}</h3>}
+        <div className="booking-inline-actions">
+          <Button type="button" disabled={selectedMinutes === null || isSaving} onClick={handleConfirm}>
+            {isSaving ? "Zakazivanje..." : "Potvrdi termin"}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!selectedDate && selectedMinutes === null}
+            onClick={clearSelection}
+          >
+            Otkaži izbor
+          </Button>
+        </div>
+      </div>
+
       {error && <p className="form-error">{error}</p>}
 
       <div className="booking-calendar">
@@ -276,20 +312,6 @@ export function BookingForm({ service, providerId, workingHoursStart, workingHou
           )}
         </div>
       )}
-
-      <div className="booking-inline-actions">
-        <Button type="button" disabled={selectedMinutes === null || isSaving} onClick={handleConfirm}>
-          {isSaving ? "Zakazivanje..." : "Potvrdi termin"}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={!selectedDate && selectedMinutes === null}
-          onClick={clearSelection}
-        >
-          Otkaži izbor
-        </Button>
-      </div>
     </div>
   );
 }
