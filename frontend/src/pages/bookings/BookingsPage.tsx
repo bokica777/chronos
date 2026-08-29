@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../../components/common/PageHeader";
 import { BookingList } from "../../features/bookings/components/BookingList";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
-import type { Booking } from "../../models/booking";
+import type { Booking, BookingStatus } from "../../models/booking";
 import type { Payment } from "../../models/payment";
 import type { Provider } from "../../models/provider";
 import type { Service } from "../../models/service";
@@ -11,6 +11,25 @@ import { paymentService } from "../../services/paymentService";
 import { providerService } from "../../services/providerService";
 import { serviceCatalogService } from "../../services/serviceCatalogService";
 import { useAuth } from "../../store/useAuth";
+
+type StatusFilter = "ALL" | BookingStatus;
+
+const statusFilterLabels: Record<StatusFilter, string> = {
+  ALL: "Svi statusi",
+  PENDING: "Na čekanju",
+  CONFIRMED: "Potvrđeno",
+  CANCELLED: "Otkazano",
+  COMPLETED: "Završeno",
+};
+
+type SortOption = "newest" | "upcoming" | "price-asc" | "price-desc";
+
+const sortLabels: Record<SortOption, string> = {
+  newest: "Najnovije prvo",
+  upcoming: "Termin uskoro",
+  "price-asc": "Cena - rastuće",
+  "price-desc": "Cena - opadajuće",
+};
 
 export function BookingsPage() {
   useDocumentTitle("Moje rezervacije");
@@ -22,6 +41,10 @@ export function BookingsPage() {
   const [payments, setPayments] = useState<Record<string, Payment | null>>({});
   const [payingBookingId, setPayingBookingId] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
 
   useEffect(() => {
     if (!user) {
@@ -138,6 +161,50 @@ export function BookingsPage() {
     }
   };
 
+  // Najnovija rezervacija (po vremenu kreiranja) se blago istice na kartici -
+  // racuna se iz PUNE liste, ne iz filtrirane/sortirane, da oznaka ne "nestane"
+  // kad korisnik filtrira ili pretrazuje.
+  const newestBookingId = useMemo(
+    () =>
+      bookings.length
+        ? bookings.reduce((newest, booking) =>
+            new Date(booking.createdAt) > new Date(newest.createdAt) ? booking : newest,
+          ).id
+        : null,
+    [bookings],
+  );
+
+  const visibleBookings = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    let result = bookings;
+
+    if (statusFilter !== "ALL") {
+      result = result.filter((booking) => booking.status === statusFilter);
+    }
+
+    if (query) {
+      result = result.filter(
+        (booking) =>
+          (booking.serviceName?.toLowerCase().includes(query) ?? false) ||
+          (booking.providerName?.toLowerCase().includes(query) ?? false),
+      );
+    }
+
+    return [...result].sort((a, b) => {
+      switch (sortBy) {
+        case "upcoming":
+          return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+        case "price-asc":
+          return a.price - b.price;
+        case "price-desc":
+          return b.price - a.price;
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+  }, [bookings, searchQuery, statusFilter, sortBy]);
+
   if (!user) {
     return (
       <>
@@ -163,20 +230,58 @@ export function BookingsPage() {
 
   return (
     <>
-      <PageHeader
-        eyebrow="Nalog"
-        title="Moje rezervacije"
-        description="Ovde su prikazane tvoje aktivne i prethodne rezervacije."
-      />
-      <BookingList
-        bookings={bookings}
-        providers={providers}
-        services={services}
-        payments={payments}
-        onCancel={handleCancel}
-        onPay={handlePay}
-        payingBookingId={payingBookingId}
-      />
+      <PageHeader eyebrow="Nalog" title="Moje rezervacije" />
+
+      {bookings.length > 0 && (
+        <div className="services-toolbar">
+          <input
+            type="search"
+            className="services-search-input"
+            placeholder="Pretraži po usluzi ili pružaocu..."
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+          <select
+            className="services-sort-select"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+          >
+            {Object.entries(statusFilterLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <select
+            className="services-sort-select"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as SortOption)}
+          >
+            {Object.entries(sortLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {bookings.length > 0 && visibleBookings.length === 0 ? (
+        <div className="empty-state">
+          <p>Nema rezervacija koje odgovaraju izabranim filterima.</p>
+        </div>
+      ) : (
+        <BookingList
+          bookings={visibleBookings}
+          providers={providers}
+          services={services}
+          payments={payments}
+          newestBookingId={newestBookingId}
+          onCancel={handleCancel}
+          onPay={handlePay}
+          payingBookingId={payingBookingId}
+        />
+      )}
     </>
   );
 }

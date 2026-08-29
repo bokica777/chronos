@@ -10,6 +10,7 @@ type BookingListProps = {
   providers?: Record<string, Provider>;
   services?: Record<string, Service>;
   payments?: Record<string, Payment | null>;
+  newestBookingId?: string | null;
   onCancel?: (id: string) => void;
   onPay?: (id: string) => void;
   payingBookingId?: string | null;
@@ -20,6 +21,7 @@ export function BookingList({
   providers,
   services,
   payments,
+  newestBookingId,
   onCancel,
   onPay,
   payingBookingId,
@@ -33,12 +35,6 @@ export function BookingList({
     );
   }
 
-  // Najnovija rezervacija (po vremenu kreiranja) se blago istice - vizuelni
-  // podsetnik "ovo si upravo zakazao/la".
-  const newestId = bookings.reduce((newest, booking) =>
-    new Date(booking.createdAt) > new Date(newest.createdAt) ? booking : newest,
-  ).id;
-
   return (
     <section className="booking-list">
       {bookings.map((booking) => (
@@ -48,7 +44,7 @@ export function BookingList({
           provider={providers?.[booking.providerId]}
           service={services?.[booking.serviceId]}
           payment={payments?.[booking.id]}
-          isNewest={booking.id === newestId}
+          isNewest={booking.id === newestBookingId}
           onCancel={onCancel}
           onPay={onPay}
           isPaying={payingBookingId === booking.id}
