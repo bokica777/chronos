@@ -18,18 +18,18 @@ Payment servis je sada povezan sa tokom rezervacije (frontend orkestrira - nema 
 
 **Plaćanje je od ovog koraka pravi Stripe Checkout (test mod/sandbox), ne više čista simulacija.** Klik pokreće Stripe Checkout sesiju (Stripe.net SDK), korisnik se prebacuje na pravu Stripe stranicu i unosi standardni test broj kartice (`4242 4242 4242 4242`), pa se vraća na `/bookings` gde se plaćanje potvrđuje - i odmah pri povratku (`confirm-stripe` ruta) i nezavisno preko Stripe webhook-a (`webhooks/stripe`, potpis se proverava HMAC-om). Naplata ide u EUR po fiksnom kursu (RSD ima poznatu nedoslednost oko decimala kod Stripe-a) - ostatak aplikacije i dalje prikazuje cene u RSD. Detaljno objašnjeno u `docs/payment-flow-notes.md`, uključujući uputstvo za lokalno testiranje webhook-a preko Stripe CLI-a.
 
-Ono što specifikacija identifikuje kao **suštinu diplomskog rada — Docker, Kubernetes, Argo Rollouts, CI/CD, observability, v1/v2 canary rollout — trenutno je na 0%.** Cela funkcionalna aplikacija je gotova, ali deo koji dokazuje temu diplomskog rada (progresivni rollout) tek treba da počne.
+Ono što specifikacija identifikuje kao **suštinu diplomskog rada — Docker, Kubernetes, Argo Rollouts, CI/CD, observability, v1/v2 canary rollout** — sada je delimično urađeno: **Docker kontejnerizacija i v1/v2 verzionisanje Booking servisa su gotovi** (vidi `docs/docker-i-v2-izvestaj.md`), ali **Kubernetes, Argo Rollouts, CI/CD i observability tek treba da počnu** — to je i dalje najveći preostali deo, jer pravi progresivni rollout (postepeno % saobraćaja između v1 i v2) zahteva Argo Rollouts u K8s okruženju, što `docker-compose` sâm ne može da demonstrira.
 
 ## 2. Deo I — infrastruktura i DevOps (Faze 4–5 iz specifikacije)
 
 | Oblast | Status | Napomena |
 |---|---|---|
-| Kontejnerizacija (Dockerfile po servisu) | ⛔ | Nijedan servis nema Dockerfile |
+| Kontejnerizacija (Dockerfile po servisu) | ✅ | Svih 7 komponenti (5 servisa + gateway + frontend) ima Dockerfile, plus `docker-compose` koji podiže ceo sistem jednom komandom. Detalji: `docs/docker-i-v2-izvestaj.md` |
 | Kubernetes manifesti | ⛔ | Nema deployment/service/ingress YAML-ova |
-| Argo Rollouts (canary) | ⛔ | Ovo je centralna tema rada — još ne postoji |
+| Argo Rollouts (canary) | ⛔ | Ovo je centralna tema rada — još ne postoji. `docker-compose` namerno pokreće samo JEDAN `booking-api` kontejner (verzija bira se env promenljivom) — pravo postepeno % preusmeravanje saobraćaja je posao Argo Rollouts-a u K8s fazi |
 | CI/CD pipeline | ⛔ | Nema build/test/deploy automatizacije |
 | Observability (Prometheus/Grafana, metrike) | ⛔ | Nijedan servis ne izlaže metrike |
-| v1/v2 verzionisanje Booking servisa | ⛔ | Postoji samo jedna verzija Booking servisa, nema razdvajanja na v1/v2 koje je potrebno da bi canary rollout imao smisla |
+| v1/v2 verzionisanje Booking servisa | ✅ | `booking.version` env promenljiva (`v1`/`v2`), v2 dodatno sinhrono proverava kod provider-service-a da provajder/usluga postoje i da su aktivni pre potvrde rezervacije; obe verzije taguju odgovor `X-Booking-Service-Version` header-om. Detalji: `docs/docker-i-v2-izvestaj.md` |
 
 Ovo je najveći gap. Sve ostalo (Faze 0–3: skelet, CRUD, RabbitMQ eventi, poslovna logika) je urađeno solidno, ali bez ovog dela ne postoji demonstracija progresivnog rollouta — a to je tema diplomskog rada.
 
