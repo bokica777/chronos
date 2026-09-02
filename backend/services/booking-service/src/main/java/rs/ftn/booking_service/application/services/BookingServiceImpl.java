@@ -1,5 +1,6 @@
 package rs.ftn.booking_service.application.services;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import rs.ftn.booking_service.domain.events.BookingCancelledEvent;
@@ -12,6 +13,7 @@ import rs.ftn.booking_service.domain.models.BookingStatus;
 import rs.ftn.booking_service.domain.models.OutboxMessage;
 import rs.ftn.booking_service.domain.repositories.BookingRepository;
 import rs.ftn.booking_service.domain.repositories.OutboxMessageRepository;
+import rs.ftn.booking_service.infrastructure.http.ProviderServiceClient;
 import rs.ftn.booking_service.web.dtos.CreateBookingRequest;
 import tools.jackson.databind.json.JsonMapper;
 import org.slf4j.Logger;
@@ -26,14 +28,20 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookingRepository;
     private final OutboxMessageRepository outboxMessageRepository;
     private final JsonMapper jsonMapper;
+    private final ProviderServiceClient providerServiceClient;
+    private final String bookingVersion;
     private static final Logger log = LoggerFactory.getLogger(BookingServiceImpl.class);
 
     public BookingServiceImpl(BookingRepository bookingRepository,
                                OutboxMessageRepository outboxMessageRepository,
-                               JsonMapper jsonMapper) {
+                               JsonMapper jsonMapper,
+                               ProviderServiceClient providerServiceClient,
+                               @Value("${booking.version}") String bookingVersion) {
         this.bookingRepository = bookingRepository;
         this.outboxMessageRepository = outboxMessageRepository;
         this.jsonMapper = jsonMapper;
+        this.providerServiceClient = providerServiceClient;
+        this.bookingVersion = bookingVersion;
     }
 
     @Override
@@ -44,6 +52,11 @@ public class BookingServiceImpl implements BookingService {
         if (bookingRepository.existsByIdempotencyKey(request.idempotencyKey())) {
             log.warn("Duplicate booking rejected for idempotencyKey {}", request.idempotencyKey());
             throw new DuplicateBookingException(request.idempotencyKey());
+        }
+
+        // v2 - dodatna provera koju v1 namerno ne radi (vidi ProviderServiceClient).
+        if ("v2".equalsIgnoreCase(bookingVersion)) {
+            providerServiceClient.assertProviderAndServiceAreBookable(request.providerId(), request.serviceId());
         }
 
         List<Booking> overlapping = bookingRepository.findOverlapping(
