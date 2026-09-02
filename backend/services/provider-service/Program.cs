@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Observability;
@@ -51,6 +52,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/", () => new { service = "provider", version = "1.0.0" });
+
+// Primenjuje migracije pri startu - isti razlog kao u auth-service Program.cs.
+using (var migrationScope = app.Services.CreateScope())
+{
+    migrationScope.ServiceProvider.GetRequiredService<ProviderDbContext>().Database.Migrate();
+}
 
 await SeedCategoriesAsync(app.Services);
 

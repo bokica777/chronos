@@ -1,0 +1,23 @@
+# Build artefakti i IDE fajlovi - ne treba da udju u Docker build kontekst
+# (i ubrzava build, i sprecava da se lokalni Windows bin/obj folderi kopiraju
+# u Linux kontejner).
+**/bin/
+**/obj/
+**/target/
+.vs/
+.vscode/
+.idea/
+*.user
+
+# Node/frontend
+**/node_modules/
+frontend/dist/
+
+# Git i dokumentacija
+.git/
+.github/
+docs/
+*.md
+
+# Lokalna infra stanja
+infra/docker/*.log

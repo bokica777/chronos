@@ -42,6 +42,15 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/", () => new { service = "auth", version = "1.0.0" });
 
+// Primenjuje migracije pri startu - bez ovoga bi u kontejneru (bez razvojnog
+// okruzenja gde neko rucno pokrene "dotnet ef database update") servis pukao
+// na prvom upitu ka bazi. Vec primenjene migracije se preskacu, sigurno je
+// pozivati ovo na svaki start.
+using (var migrationScope = app.Services.CreateScope())
+{
+    migrationScope.ServiceProvider.GetRequiredService<AuthDbContext>().Database.Migrate();
+}
+
 await SeedAdminAsync(app.Services);
 
 app.Run();

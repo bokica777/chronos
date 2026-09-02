@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Observability;
 using PaymentApplication;
@@ -45,6 +46,13 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/", () => new { service = "payment", version = "1.0.0" });
+
+// Primenjuje migracije pri startu - isti razlog kao u auth-service Program.cs.
+using (var migrationScope = app.Services.CreateScope())
+{
+    migrationScope.ServiceProvider.GetRequiredService<PaymentDbContext>().Database.Migrate();
+}
+
 app.Run();
 
 public partial class Program;
