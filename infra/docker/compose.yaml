@@ -1,3 +1,19 @@
+# Build kontekst za .NET servise (auth-api, provider-api, payment-api, gateway)
+# MORA biti koren repozitorijuma (deljeni Directory.Build.props/Directory.Packages.props
+# i backend/building-blocks) - zato "context: ../.." svuda dole, uz "dockerfile"
+# koji pokazuje na konkretan Dockerfile. Java servisi (booking-api, notification-api)
+# su samostalni Maven moduli pa im je kontekst njihov sopstveni folder.
+#
+# Svi .NET servisi imaju ASPNETCORE_ENVIRONMENT=Production (podrazumevano, namerno
+# eksplicitno napisano) - da se NE ucita appsettings.Development.json (koji ima
+# hardkodovane localhost connection stringove/Stripe test kljuceve za lokalni dev
+# bez kontejnera) nego samo appsettings.json (prazni "" sentinel za tajne) + env
+# promenljive postavljene ovde (Ključ__PodKljuc konvencija za ugnjezdene ASP.NET
+# Core sekcije).
+#
+# Pokretanje: docker compose -f infra/docker/compose.yaml up --build
+# (iz korena repozitorijuma, jer "context: ../.." mora da se razresi u koren)
+
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -32,6 +48,166 @@ services:
       timeout: 5s
       retries: 10
 
+  # mssql/server image nema ugradjen "docker-entrypoint-initdb.d" mehanizam
+  # (za razliku od npr. postgres slike) - bez ovoga bi Flyway (booking-api,
+  # notification-api) pukao na PRAZNOJ SQL Server instanci jer JDBC konekcija
+  # zahteva da baza vec postoji (za razliku od EF Core Database.Migrate(), koji
+  # bazu sam kreira ako ne postoji - zato je ovaj korak "samo" siguran/idempotan
+  # i za .NET servise, ne samo za Java). Jednokratan kontejner, izlazi cim zavrsi.
+  sqlserver-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: chronos-sqlserver-init
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    entrypoint: ["bash", "-c"]
+    command:
+      - >
+        for db in AuthDb ProviderDb PaymentDb BookingDb NotificationDb; do
+          /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -P "Chronos!2026" -C -Q "IF DB_ID('$$db') IS NULL CREATE DATABASE $$db";
+        done
+    restart: "no"
+
+  auth-api:
+    build:
+      context: ../..
+      dockerfile: backend/services/auth-service/Dockerfile
+    container_name: chronos-auth-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Database: "Server=sqlserver,1433;Database=AuthDb;User Id=sa;Password=Chronos!2026;TrustServerCertificate=True;Encrypt=True"
+    depends_on:
+      sqlserver-init:
+        condition: service_completed_successfully
+    ports:
+      - "5094:8080"
+
+  provider-api:
+    build:
+      context: ../..
+      dockerfile: backend/services/provider-service/Dockerfile
+    container_name: chronos-provider-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Database: "Server=sqlserver,1433;Database=ProviderDb;User Id=sa;Password=Chronos!2026;TrustServerCertificate=True;Encrypt=True"
+    depends_on:
+      sqlserver-init:
+        condition: service_completed_successfully
+    ports:
+      - "5033:8080"
+    volumes:
+      # Uploadovane slike (provajderi/usluge) prezive restart/rebuild kontejnera -
+      # bez ovoga bi svaki "docker compose up --build" obrisao sve uploadovane slike.
+      - provider-uploads:/app/wwwroot/uploads
+
+  payment-api:
+    build:
+      context: ../..
+      dockerfile: backend/services/payment-service/Dockerfile
+    container_name: chronos-payment-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Database: "Server=sqlserver,1433;Database=PaymentDb;User Id=sa;Password=Chronos!2026;TrustServerCertificate=True;Encrypt=True"
+      # Isti Stripe test-mode kljucevi kao appsettings.Development.json (bezbedno
+      # javno vidljivi u repo istoriji - test kljucevi ne mogu pomeriti pravi novac;
+      # zato su GitHub secret-scanning upozorenja za njih ranije svesno propustena).
+      Stripe__SecretKey: "sk_test_51U8mh371oMy3oNwz3keczOrBq7lRQruJnLC25qqkOIzXBwPe4iJAANn1XwH4Jsyo31c5Z5q0g72lVyC7czjRWIK600j9ayJEr5"
+      Stripe__PublishableKey: "pk_test_51U8mh371oMy3oNwzaluljMPwWy5RcXBoC7WuNhuvdgpcsHeWj3fPlCmSHkJn8V16Yz9JlY5N2sjNC7rFrIxUk3EN004DLsKuHh"
+      Stripe__WebhookSecret: ""
+      # Ide u Stripe Checkout success/cancel redirect URL - korisnikov browser
+      # otvara ovo POSLE placanja, pa mora biti host-port frontenda, ne container ime.
+      Frontend__BaseUrl: "http://localhost:5173"
+    depends_on:
+      sqlserver-init:
+        condition: service_completed_successfully
+    ports:
+      - "5164:8080"
+
+  gateway:
+    build:
+      context: ../..
+      dockerfile: backend/gateway/Gateway/Dockerfile
+    container_name: chronos-gateway
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # appsettings.json vec ima "auth-api:8080" itd. kao YARP destinacije (bas
+      # ova imena Docker servisa) - ne treba override-ovati Clusters, samo CORS
+      # (bazni appsettings.json ima placeholder "https://chronos.example.com").
+      Cors__AllowedOrigins__0: "http://localhost:5173"
+    depends_on:
+      - auth-api
+      - provider-api
+      - payment-api
+      - booking-api
+      - notification-api
+    ports:
+      - "5076:8080"
+
+  booking-api:
+    build:
+      context: ../../backend/services/booking-service
+      dockerfile: Dockerfile
+    container_name: chronos-booking-api
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=BookingDb;encrypt=true;trustServerCertificate=true"
+      SPRING_RABBITMQ_HOST: rabbitmq
+      # v1 podrazumevano - da se "docker compose up" ponasa isto kao danas.
+      # Za rucno testiranje v2 ponasanja (poziv ka provider-service pre potvrde
+      # rezervacije, X-Booking-Service-Version: v2 header): pokrenuti sa
+      # "BOOKING_VERSION=v2 docker compose up booking-api" ili promeniti
+      # vrednost ispod. Pravo postepeno preusmeravanje saobracaja izmedju v1/v2
+      # (canary %) je posao Argo Rollouts-a u K8s fazi, ne docker-compose-a -
+      # zato ovde namerno postoji samo JEDAN booking-api kontejner, ne dva.
+      BOOKING_VERSION: "${BOOKING_VERSION:-v1}"
+      # Spring relaxed binding za env promenljive UKLANJA crtice iz imena
+      # svojstva (ne pretvara ih u "_") - "provider-service.base-url" je
+      # zato "PROVIDERSERVICE_BASEURL", ne "PROVIDER_SERVICE_BASE_URL"
+      # (isti obrazac kao dokumentovani primer spring.main.log-startup-info
+      # -> SPRING_MAIN_LOGSTARTUPINFO).
+      PROVIDERSERVICE_BASEURL: "http://provider-api:8080"
+    depends_on:
+      sqlserver-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8083:8080"
+
+  notification-api:
+    build:
+      context: ../../backend/services/notification-service
+      dockerfile: Dockerfile
+    container_name: chronos-notification-api
+    environment:
+      # application.properties hardkodira server.port=8082 za lokalni dev (da se
+      # ne kosi sa booking-service na istom portu) - Gateway ocekuje 8080 od
+      # svakog kontejnera, zato override ovde.
+      SERVER_PORT: "8080"
+      SPRING_DATASOURCE_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=NotificationDb;encrypt=true;trustServerCertificate=true"
+      SPRING_RABBITMQ_HOST: rabbitmq
+    depends_on:
+      sqlserver-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8082:8080"
+
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+      args:
+        # Bakuje se u JS bundle na build-u (vidi frontend/Dockerfile) - 5076 je
+        # host port na koji je gateway mapiran dole, isto sto i lokalni dev.
+        VITE_API_BASE_URL: "http://localhost:5076"
+    container_name: chronos-frontend
+    depends_on:
+      - gateway
+    ports:
+      - "5173:8080"
+
 volumes:
   sqlserver-data:
   rabbitmq-data:
+  provider-uploads:
