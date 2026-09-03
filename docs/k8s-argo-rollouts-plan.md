@@ -161,6 +161,17 @@ da dobijaju timeout/connection-refused pri pozivu ka provider-service-u,
 intervencije. Ovo je scenario koji treba uvežbati i snimiti/demonstrirati
 uživo — to je najjači pojedinačni dokaz teze rada.
 
+**Preduslov koji je lako prevideti: mora postojati kontinuiran saobraćaj.**
+I procentualno deljenje (10%/50%) i sâma analiza su besmisleni bez stvarnog
+toka zahteva — par ručnih klikova kroz UI ne daje ni vidljivu raspodelu ni
+dovoljno podataka da `AnalysisRun` donese pouzdanu odluku. Ne treba pravi
+load-testing alat (k6/JMeter je prekomplikovano za ovaj obim) — dovoljan je
+mali skript (PowerShell ili Python) koji u petlji šalje POST zahteve ka
+`/api/v1/bookings` kroz Gateway (par zahteva u sekundi, u trajanju celog
+rollout-a, sa validnim JWT-om test korisnika) i pušta se paralelno dok se
+demonstrira `kubectl argo rollouts get rollout --watch`. Ovaj skript je deo
+posla u Fazi B, ne posle nje.
+
 ## 3. Faza C — Observability (minimalno potrebno da Faza B ima šta da pita)
 
 ### 3.1 Booking-service: dodati `micrometer-registry-prometheus`
