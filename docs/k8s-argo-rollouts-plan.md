@@ -172,6 +172,34 @@ rollout-a, sa validnim JWT-om test korisnika) i pušta se paralelno dok se
 demonstrira `kubectl argo rollouts get rollout --watch`. Ovaj skript je deo
 posla u Fazi B, ne posle nje.
 
+### 2.7 Obim namerno ograničen: jedan servis, jedan v1/v2 par, bez veštačkog "kvarenja" v1
+
+Ovo se lako postavlja kao pitanje kasnije (npr. na odbrani "zašto samo jedan
+servis?"), pa se eksplicitno zapisuje ovde:
+
+- **Jedan servis (booking) je dovoljan.** Mehanizam koji se dokazuje
+  (postepena težina, automatska analiza, automatski rollback) je identičan
+  bez obzira koji servis nosi v1/v2 razliku — ponavljanje na još servisa bi
+  samo duplirati manifeste, ne bi dodalo ništa novo tezi. Eventualno
+  proširenje na drugi servis ostaje mogući bonus POSLE svega ostalog (čak i
+  posle Faze D), ne cilj sam po sebi.
+- **v1/v2 razlika (validacija provajdera/usluge) je već organska, ne
+  veštački napravljena.** Bila je dokumentovan propust u projektu i pre ove
+  faze (`docs/progress-report.md`, pre implementacije) — v2 ga zatvara
+  stvarnom funkcionalnošću. Ne treba dodatno "osakatiti" v1 da izgleda
+  lošije nego što jeste.
+- **Scenario iz 2.6 (gašenje provider-api) je ODVOJENA tehnika od pitanja
+  "da li je v2 funkcionalno bolja".** To je kontrolisano izazivanje kvara u
+  infrastrukturi tokom demoa (fault injection), ne izmena koda da v1/v2
+  izgledaju drugačije — dokazuje da mehanizam SAM prepoznaje kvar, nezavisno
+  od toga koja je verzija "bolja".
+- **"Dokaz" da je v2 bolja = dve konkretne stvari, ne formalni test paket:**
+  (a) curl/Postman poziv sa nevažećim `serviceId` — v1 propušta, v2 odbija
+  sa 400 (funkcionalna ispravnost); (b) Grafana grafikon tokom scenarija
+  2.6 — vidljiv skok grešaka pa automatski povratak na v1 (bezbednosni
+  mehanizam). Formalni automatizovani testovi (JUnit) su opcioni dodatak
+  ako ostane vremena, ne preduslov.
+
 ## 3. Faza C — Observability (minimalno potrebno da Faza B ima šta da pita)
 
 ### 3.1 Booking-service: dodati `micrometer-registry-prometheus`
