@@ -1,0 +1,47 @@
+# Minimalne Helm values za "kube-prometheus-stack" chart - namerno svedeno na
+# ono sto Argo Rollouts AnalysisTemplate-u (Faza B) treba da upita (5xx stopa
+# na booking-api) + Grafana za vizuelni prilog rada. Vidi
+# docs/k8s-argo-rollouts-plan.md sekciju 3.3 - node-exporter/kube-state-metrics/
+# alertmanager/distribuirano pracenje su svesno izostavljeni kao "ukras" koji
+# ne sluzi mehanizmu analize/rollback-a.
+#
+# Instalacija: infra/scripts/install-observability.ps1 (Helm repo add + install
+# sa ovim values fajlom).
+
+alertmanager:
+  enabled: false
+
+nodeExporter:
+  enabled: false
+
+kubeStateMetrics:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    retention: 6h
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    # Bez ovoga chart podrazumevano trazi da svaki ServiceMonitor/PodMonitor
+    # nosi "release: <helm release ime>" labelu da bi ga Prometheus operator
+    # pokupio - nasa 21-servicemonitor-booking.yaml (chronos namespace) je
+    # namerno bez te labele (nezavisna od Helm release imena), pa selector
+    # mora biti nil (= pokupi SVE ServiceMonitor/PodMonitor resurse u klasteru).
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+grafana:
+  adminPassword: "chronos-admin"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi

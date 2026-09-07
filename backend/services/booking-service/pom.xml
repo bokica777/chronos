@@ -34,6 +34,15 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
+		<!-- Argo Rollouts AnalysisTemplate (Faza B) cita http_server_requests_seconds_count
+			preko Prometheus provajdera - Spring Boot Actuator automatski instrumentise
+			SVE HTTP zahteve cim se ova zavisnost nadje na classpath-u i
+			management.endpoints.web.exposure.include=prometheus se doda
+			(application.properties) - bez ijedne linije custom koda za brojanje. -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>

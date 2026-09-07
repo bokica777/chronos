@@ -1,0 +1,22 @@
+# Govori Prometheus operatoru (instaliran preko kube-prometheus-stack) da
+# skrejpuje /actuator/prometheus na booking-api Service-u (infra/kubernetes/14-booking-api.yaml,
+# nakon Faze B: infra/argo-rollouts/rollout-booking.yaml). "endpoints[].port"
+# mora da se poklapa sa IMENOM porta u Service-u ("http"), ne brojem.
+#
+# Primenjuje se POSLE kube-prometheus-stack instalacije (CRD ServiceMonitor
+# mora vec postojati u klasteru) - vidi infra/scripts/install-observability.ps1.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: booking-api
+  namespace: chronos
+  labels:
+    app: booking-api
+spec:
+  selector:
+    matchLabels:
+      app: booking-api
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 5s
