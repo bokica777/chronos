@@ -3,6 +3,7 @@ import { Button } from "../../../components/common/Button";
 import { authService } from "../../../services/authService";
 import type { ApiProblem } from "../../../models/api";
 import { useAuth } from "../../../store/useAuth";
+import { postAuthRedirectPath } from "../../../app/router/routes";
 
 function loginErrorMessage(error: ApiProblem): string {
   switch (error.status) {
@@ -30,7 +31,7 @@ export function LoginForm() {
       const result = await authService.login({ email, password });
       localStorage.setItem("chronos.token", result.accessToken);
       setUser(result.user);
-      window.location.assign("/");
+      window.location.assign(postAuthRedirectPath(result.user.role));
     } catch (error) {
       setErrorMessage(loginErrorMessage(error as ApiProblem));
       setIsSubmitting(false);

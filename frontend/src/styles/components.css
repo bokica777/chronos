@@ -1333,6 +1333,12 @@
   animation: toast-in 150ms ease;
 }
 
+.profile-toast--warning {
+  border-color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 12%, white 88%);
+  color: var(--color-warning);
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;

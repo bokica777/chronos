@@ -12,9 +12,24 @@ import { ProvidersPage } from "../../pages/providers/ProvidersPage";
 import { RegisterPage } from "../../pages/register/RegisterPage";
 import { ServiceDetailPage } from "../../pages/services/ServiceDetailPage";
 import { ServicesPage } from "../../pages/services/ServicesPage";
-import { routes } from "./routes";
+import { postAuthRedirectPath, routes } from "./routes";
+import { useAuth } from "../../store/useAuth";
+import type { UserRole } from "../../models/user";
+
+// Rute koje zahtevaju prijavu, i (za neke) tacno odredjenu ulogu. Bez ovoga,
+// npr. "Moje rezervacije" je bila direktno dostupna i sa ustajalim/nevazecim
+// tokenom (httpClient bi tek NAKON neuspesnog API poziva otkrio problem) ili
+// bez ikakve prijave - stranica bi samo ostala u "ne moze da se ucita" stanju
+// umesto da odmah vrati na login.
+const protectedRoutes: Partial<Record<string, UserRole[]>> = {
+  [routes.bookings]: ["Client"],
+  [routes.manageServices]: ["Partner"],
+  [routes.admin]: ["Admin"],
+  [routes.profile]: ["Client", "Partner", "Admin"],
+};
 
 export function AppRouter() {
+  const { user } = useAuth();
   const path = window.location.pathname;
 
   const providerDetailMatch = path.match(/^\/providers\/([^/]+)$/);
@@ -34,6 +49,23 @@ export function AppRouter() {
         <RegisterPage />
       </AuthLayout>
     );
+  }
+
+  const allowedRoles = protectedRoutes[path];
+  if (allowedRoles) {
+    if (!user) {
+      return (
+        <AuthLayout>
+          <LoginPage />
+        </AuthLayout>
+      );
+    }
+    if (!allowedRoles.includes(user.role)) {
+      // Ulogovan, ali pogresna uloga za ovu rutu (npr. Client na /admin) -
+      // vracamo ga na NJEGOVU podrazumevanu stranicu, ne na prazan 404.
+      window.location.assign(postAuthRedirectPath(user.role));
+      return null;
+    }
   }
 
   const page = (() => {

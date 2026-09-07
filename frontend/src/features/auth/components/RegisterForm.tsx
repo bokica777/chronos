@@ -4,6 +4,7 @@ import { authService } from "../../../services/authService";
 import type { ApiProblem } from "../../../models/api";
 import type { UserRole } from "../../../models/user";
 import { useAuth } from "../../../store/useAuth";
+import { postAuthRedirectPath, routes } from "../../../app/router/routes";
 
 function registerErrorMessage(error: ApiProblem): string {
   switch (error.status) {
@@ -39,7 +40,10 @@ export function RegisterForm() {
       const loginResult = await authService.login({ email, password });
       localStorage.setItem("chronos.token", loginResult.accessToken);
       setUser(loginResult.user);
-      window.location.assign("/");
+      // Svezoregistrovan partner nema jos popunjen profil firme - saljemo ga
+      // direktno na Profil (ne na Menadzer usluga kao posle obicnog login-a)
+      // gde ga docekuje banner "popuni podatke o firmi" (vidi ProfilePage).
+      window.location.assign(role === "Partner" ? routes.profile : postAuthRedirectPath(loginResult.user.role));
     } catch (error) {
       setErrorMessage(registerErrorMessage(error as ApiProblem));
       setIsSubmitting(false);

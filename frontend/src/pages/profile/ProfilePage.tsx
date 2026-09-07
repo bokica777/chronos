@@ -7,6 +7,50 @@ import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import type { Provider, UpdateProviderRequest } from "../../models/provider";
 import { providerService } from "../../services/providerService";
 import { resolveImageUrl } from "../../utils/media";
+import { useAuth } from "../../store/useAuth";
+
+const roleLabels = {
+  Client: "Korisnik",
+  Partner: "Partner",
+  Admin: "Administrator",
+} as const;
+
+// Klijent i admin nemaju provider profil (samo Partner ima) - jednostavan
+// prikaz osnovnih podataka naloga umesto pokusaja da se ucita profil firme
+// koji za njih ne postoji (ranije je ProfilePage bezuslovno zvao
+// providerService.getMine() i bezuslovno prikazivao "Partner" natpis, bez
+// obzira ko je ulogovan - otud bag da se korisniku prikazivalo da je partner).
+function SimpleAccountProfile() {
+  const { user } = useAuth();
+  if (!user) return null;
+
+  return (
+    <>
+      <PageHeader
+        eyebrow={roleLabels[user.role]}
+        title="Profil"
+        description="Osnovni podaci o tvom nalogu."
+        className="page-header--centered"
+      />
+      <div className="card profile-card">
+        <div className="profile-view-fields">
+          <div className="profile-view-field">
+            <h3>Ime</h3>
+            <p>{user.displayName}</p>
+          </div>
+          <div className="profile-view-field">
+            <h3>Email</h3>
+            <p>{user.email}</p>
+          </div>
+          <div className="profile-view-field">
+            <h3>Vrsta naloga</h3>
+            <p>{roleLabels[user.role]}</p>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
 
 const iconProps = {
   width: 22,
@@ -78,6 +122,7 @@ function toFormState(provider: Provider): FormState {
 
 export function ProfilePage() {
   useDocumentTitle("Profil");
+  const { user } = useAuth();
 
   const [provider, setProvider] = useState<Provider | null>(null);
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
@@ -89,6 +134,10 @@ export function ProfilePage() {
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    // Client/Admin nemaju provider profil - ne pokusavaj ni da ga ucitas
+    // (SimpleAccountProfile ispod pokriva njihov prikaz).
+    if (user && user.role !== "Partner") return;
+
     const controller = new AbortController();
 
     providerService
@@ -102,7 +151,7 @@ export function ProfilePage() {
       });
 
     return () => controller.abort();
-  }, []);
+  }, [user]);
 
   // Poruka o uspesnom cuvanju nestaje sama posle 2 sekunde.
   useEffect(() => {
@@ -110,6 +159,10 @@ export function ProfilePage() {
     const timeout = setTimeout(() => setSavedMessage(null), 2000);
     return () => clearTimeout(timeout);
   }, [savedMessage]);
+
+  if (user && user.role !== "Partner") {
+    return <SimpleAccountProfile />;
+  }
 
   const startEditing = () => {
     if (!provider) return;
@@ -214,6 +267,11 @@ export function ProfilePage() {
 
   const hasLocation = typeof provider.latitude === "number" && typeof provider.longitude === "number";
 
+  // Prazan profil (odmah posle registracije partnera) - podseti da se popuni,
+  // umesto da partner sam otkrije da ga klijenti ne vide ni na cemu.
+  const isProfileEmpty =
+    !provider.description && !provider.address && !provider.contactPhone && !provider.aboutUs;
+
   return (
     <>
       <PageHeader
@@ -222,6 +280,13 @@ export function ProfilePage() {
         description="Pregledaj i uredi svoj javni profil."
         className="page-header--centered"
       />
+
+      {isProfileEmpty && !isEditing && (
+        <p className="profile-toast profile-toast--warning">
+          Profil tvoje firme je još uvek prazan — dodaj opis, adresu i kontakt podatke da bi te
+          klijenti mogli pronaći i zakazati termin.
+        </p>
+      )}
 
       {savedMessage && <p className="profile-toast">{savedMessage}</p>}
 

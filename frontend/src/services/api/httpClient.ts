@@ -1,7 +1,23 @@
 import { env } from "../../config/env";
 import type { ApiProblem } from "../../models/api";
+import { routes } from "../../app/router/routes";
 
 type RequestOptions = Omit<RequestInit, "body"> & { body?: unknown };
+
+// Poziva se kad server odbije token koji smo POSLALI (ne kad je 401 npr.
+// pogresna lozinka na /auth/login - tamo se nikakav token ne salje). Ovo je
+// jedini pouzdan momenat kad znamo da je sesija "ustajala" (token istekao,
+// ili baza/korisnik vise ne postoje posle restarta okruzenja) - ciscenje
+// lokalnog stanja i povratak na login sprecava da stranice pokusavaju da
+// ucitaju podatke sa nevazecim tokenom i zauvek ostanu u "ne moze da se
+// ucita" stanju.
+function handleStaleSession() {
+  localStorage.removeItem("chronos.token");
+  localStorage.removeItem("chronos.user");
+  if (window.location.pathname !== routes.login) {
+    window.location.assign(routes.login);
+  }
+}
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const token = localStorage.getItem("chronos.token");
@@ -16,6 +32,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
+
+  if (response.status === 401 && token) {
+    handleStaleSession();
+  }
 
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string } | null;
