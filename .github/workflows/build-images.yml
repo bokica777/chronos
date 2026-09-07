@@ -1,0 +1,66 @@
+# Faza D (docs/k8s-argo-rollouts-plan.md, sekcija 4) - NAMERNO minimalno: samo
+# build + push Docker image-a u GHCR na push u main, tagovano git SHA-om. BEZ
+# automatskog deploy-a u klaster (bez Argo CD/GitOps) - tema rada je Argo
+# ROLLOUTS (progresivni rollout unutar klastera), ne Argo CD/GitOps (kako se
+# manifesti sinhronizuju sa git-om). Deploy u lokalni kind klaster ostaje
+# rucni/skriptovani korak (infra/scripts/build-and-load-images.ps1 +
+# deploy-all.ps1) - namerno, vidi obrazlozenje u planu.
+#
+# Ovo je i PRVI kandidat za potpuno izbacivanje ako ponestane vremena pred
+# odbranu - ne dotice glavni argument rada (canary rollback mehanizam).
+name: Build i push Docker image-a
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: auth-service
+            dockerfile: backend/services/auth-service/Dockerfile
+            context: .
+          - image: provider-service
+            dockerfile: backend/services/provider-service/Dockerfile
+            context: .
+          - image: payment-service
+            dockerfile: backend/services/payment-service/Dockerfile
+            context: .
+          - image: gateway
+            dockerfile: backend/gateway/Gateway/Dockerfile
+            context: .
+          - image: booking-service
+            dockerfile: backend/services/booking-service/Dockerfile
+            context: backend/services/booking-service
+          - image: notification-service
+            dockerfile: backend/services/notification-service/Dockerfile
+            context: backend/services/notification-service
+          - image: frontend
+            dockerfile: frontend/Dockerfile
+            context: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in u GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build i push (${{ matrix.image }})
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/${{ matrix.image }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/${{ matrix.image }}:latest
