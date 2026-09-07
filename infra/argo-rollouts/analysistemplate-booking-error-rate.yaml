@@ -1,0 +1,50 @@
+# AnalysisTemplate koji "pause" korake u rollout-booking*.yaml pretvara iz
+# rucne potvrde u AUTOMATSKU odluku (promocija/rollback) - ovo je mehanizam koji
+# direktno ispunjava napomenu iz docs/architecture/README.md ("neuspesna
+# analiza automatski prekida promociju"). Vidi docs/k8s-argo-rollouts-plan.md
+# sekciju 2.5 za puno obrazlozenje IZBORA metrike.
+#
+# ZASTO 5xx, NE "bilo koja greska": v2 legitimno vraca HTTP 400 kada je
+# providerId/serviceId nevazeci (InvalidBookingException) - to je ISPRAVNO
+# ponasanje v2, ne kvar. Da je metrika "bilo koja greska", v2 bi izgledala
+# losije od v1 zbog toga sto radi svoj posao ispravnije, i rollback bi se
+# aktivirao pogresno.
+#
+# ZASTO agregatna (ne canary-only) stopa: Argo Rollouts ovde koristi "basic
+# canary" (odnos replika ispod ISTOG Service-a, BEZ traffic-router plugina -
+# vidi docs/k8s-argo-rollouts-plan.md sekciju 2.3), pa Prometheus (preko
+# ServiceMonitor-a na Service nivou) ne razlikuje canary/stable pod u samoj
+# metrici bez dodatnog relabeling koraka na "rollouts-pod-template-hash" pod
+# labeli - namerno izostavljeno kao dodatna slozenost van obima basic canary
+# pristupa. Agregatna stopa i dalje ispravno detektuje kvar: dok god deo
+# saobracaja ide na pokvarenu v2, ukupna stopa greske raste i prelazi prag.
+#
+# "> 0" u imeniocu je standardni Prometheus idiom da se izbegne 0/0 = NaN kad
+# jos nema saobracaja (npr. pre nego sto load-generator.ps1 krene) - u tom
+# slucaju upit vraca prazan rezultat umesto NaN, a Argo Rollouts merenje bez
+# rezultata ne oznacava odmah kao "uspesno".
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: booking-error-rate
+  namespace: chronos
+spec:
+  metrics:
+    - name: booking-error-rate
+      # 4 merenja na 15s (~1 min) po "pause" koraku pre konacne odluke -
+      # dovoljno kratko za zivu demonstraciju, dovoljno uzoraka da jedan
+      # slucajan skok ne obori ceo rollout.
+      interval: 15s
+      count: 4
+      # Jedno merenje preko praga je dovoljno da se ceo AnalysisRun oznaci kao
+      # neuspesan (i time pokrene automatski rollback) - namerno strogo, ovo je
+      # scenario iz sekcije 2.6 (gasenje provider-api) gde zelimo brzu reakciju.
+      failureLimit: 1
+      successCondition: result[0] < 0.05
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            sum(rate(http_server_requests_seconds_count{namespace="chronos",service="booking-api",status=~"5.."}[1m]))
+            /
+            (sum(rate(http_server_requests_seconds_count{namespace="chronos",service="booking-api"}[1m])) > 0)

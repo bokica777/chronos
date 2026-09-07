@@ -1,0 +1,107 @@
+# ZAMENJUJE infra/kubernetes/14-booking-api.yaml Deployment (Faza B) - primeniti
+# ovaj fajl pa obrisati stari Deployment:
+#   kubectl apply -f infra/argo-rollouts/rollout-booking.yaml
+#   kubectl delete deployment booking-api -n chronos
+# Service iz 14-booking-api.yaml OSTAJE (selektuje po labeli "app: booking-api",
+# koju Rollout-ovi Pod-ovi nose identicno kao stari Deployment-ovi).
+#
+# Argo Rollouts kontroler mora vec biti instaliran (infra/scripts/install-argo-rollouts.ps1)
+# i AnalysisTemplate mora vec postojati (analysistemplate-booking-error-rate.yaml)
+# pre ovog koraka.
+#
+# BROJ REPLIKA: 10 bi dao najciscu procentualnu matematiku (10% = tacno 1 pod -
+# vidi docs/k8s-argo-rollouts-plan.md sekciju 2.3), ali 10 JVM instanci
+# istovremeno je nerealno opterecenje za razvojni laptop pored SQL Server-a,
+# RabbitMQ-a, Prometheus/Grafana-e i ostalih 6 servisa. Odabrano je 4 replike -
+# grublje zaokruzivanje procenta (poznato ogranicenje basic canary pristupa,
+# vec eksplicitno prihvaceno u planu), ali isti mehanizam se i dalje jasno vidi.
+#
+# OVAJ fajl (BOOKING_VERSION=v1) predstavlja POCETNO/STABILNO stanje - rollout
+# se pokrece primenom rollout-booking-v2.yaml (identican fajl, samo
+# BOOKING_VERSION=v2), sto Argo Rollouts prepoznaje kao izmenu Pod template-a i
+# pokrece canary korake iz strategije ispod.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: booking-api
+  namespace: chronos
+spec:
+  replicas: 4
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: booking-api
+  strategy:
+    canary:
+      analysis:
+        templates:
+          - templateName: booking-error-rate
+        # Prva analiza pocinje POSLE prvog setWeight koraka (indeks 0 = setWeight: 10),
+        # ne pre - nema smisla analizirati pre nego sto canary uopste dobije saobracaj.
+        startingStep: 1
+      steps:
+        - setWeight: 10
+        - pause: {}
+        - setWeight: 50
+        - pause: {}
+        - setWeight: 100
+  template:
+    metadata:
+      labels:
+        app: booking-api
+    spec:
+      initContainers:
+        - name: wait-for-sqlserver
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z sqlserver 1433; do echo cekam sqlserver...; sleep 2; done"]
+        - name: wait-for-rabbitmq
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z rabbitmq 5672; do echo cekam rabbitmq...; sleep 2; done"]
+      containers:
+        - name: booking-api
+          image: chronos/booking-service:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chronos-config
+                  key: BOOKING_DB_URL
+            - name: SPRING_RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: chronos-config
+                  key: SPRING_RABBITMQ_HOST
+            # Jedina razlika izmedju rollout-booking.yaml (ovaj fajl, v1) i
+            # rollout-booking-v2.yaml je vrednost ispod - isti Docker image za
+            # oba, ponasanje se grana u runtime-u (vidi BookingVersionConfig/
+            # ProviderServiceClient u kodu).
+            - name: BOOKING_VERSION
+              value: "v1"
+            - name: PROVIDERSERVICE_BASEURL
+              valueFrom:
+                configMapKeyRef:
+                  name: chronos-config
+                  key: PROVIDERSERVICE_BASEURL
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
