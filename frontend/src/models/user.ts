@@ -1,5 +1,14 @@
 export type UserRole = "Client" | "Partner" | "Admin";
 
+// Backend salje/ocekuje engleske vrednosti enuma ("Client" itd.) - ovo je
+// SAMO za prikaz na frontu (npr. dropdown u admin panelu je ranije prikazivao
+// sirovu vrednost "Client" umesto "Korisnik").
+export const roleLabels: Record<UserRole, string> = {
+  Client: "Korisnik",
+  Partner: "Partner",
+  Admin: "Administrator",
+};
+
 export interface User {
   id: string;
   email: string;

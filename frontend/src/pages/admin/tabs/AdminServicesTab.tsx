@@ -6,12 +6,23 @@ import type { Service } from "../../../models/service";
 import { adminService } from "../../../services/adminService";
 import { resolveImageUrl } from "../../../utils/media";
 
+type SortOption = "name-asc" | "price-asc" | "price-desc" | "provider-asc";
+
+const sortLabels: Record<SortOption, string> = {
+  "name-asc": "Naziv (A-Š)",
+  "price-asc": "Cena (rastuće)",
+  "price-desc": "Cena (opadajuće)",
+  "provider-asc": "Partner (A-Š)",
+};
+
 export function AdminServicesTab() {
   const [services, setServices] = useState<Service[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("name-asc");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -64,9 +75,64 @@ export function AdminServicesTab() {
     );
   }
 
+  const query = searchQuery.trim().toLowerCase();
+  const visibleServices = services
+    .filter((service) => {
+      if (!query) return true;
+      const provider = providersById.get(service.providerId);
+      const category = categoriesById.get(service.categoryId);
+      return (
+        service.name.toLowerCase().includes(query) ||
+        (provider?.name ?? "").toLowerCase().includes(query) ||
+        (category?.name ?? "").toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "price-asc":
+          return a.price - b.price;
+        case "price-desc":
+          return b.price - a.price;
+        case "provider-asc":
+          return (providersById.get(a.providerId)?.name ?? "").localeCompare(
+            providersById.get(b.providerId)?.name ?? "",
+            "sr",
+          );
+        default:
+          return a.name.localeCompare(b.name, "sr");
+      }
+    });
+
   return (
-    <ul className="service-manage-list">
-      {services.map((service) => {
+    <>
+      <div className="services-toolbar">
+        <input
+          type="search"
+          className="services-search-input"
+          placeholder="Pretraži po nazivu, partneru ili kategoriji..."
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+        />
+        <select
+          className="services-sort-select"
+          value={sortBy}
+          onChange={(event) => setSortBy(event.target.value as SortOption)}
+        >
+          {Object.entries(sortLabels).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {visibleServices.length === 0 ? (
+        <div className="empty-state">
+          <p>Nijedna usluga ne odgovara pretrazi.</p>
+        </div>
+      ) : (
+        <ul className="service-manage-list">
+          {visibleServices.map((service) => {
         const provider = providersById.get(service.providerId);
         const category = categoriesById.get(service.categoryId);
         return (
@@ -96,7 +162,9 @@ export function AdminServicesTab() {
             </div>
           </li>
         );
-      })}
-    </ul>
+          })}
+        </ul>
+      )}
+    </>
   );
 }

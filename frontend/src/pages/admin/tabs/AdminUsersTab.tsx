@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../../components/common/Button";
 import type { User, UserRole } from "../../../models/user";
+import { roleLabels } from "../../../models/user";
 import { adminService } from "../../../services/adminService";
 import { useAuth } from "../../../store/useAuth";
 import { formatDateTime } from "../../../utils/date";
@@ -92,7 +93,7 @@ export function AdminUsersTab() {
               >
                 {roles.map((role) => (
                   <option key={role} value={role}>
-                    {role}
+                    {roleLabels[role]}
                   </option>
                 ))}
               </select>

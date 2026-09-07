@@ -8,12 +8,7 @@ import type { Provider, UpdateProviderRequest } from "../../models/provider";
 import { providerService } from "../../services/providerService";
 import { resolveImageUrl } from "../../utils/media";
 import { useAuth } from "../../store/useAuth";
-
-const roleLabels = {
-  Client: "Korisnik",
-  Partner: "Partner",
-  Admin: "Administrator",
-} as const;
+import { roleLabels } from "../../models/user";
 
 // Klijent i admin nemaju provider profil (samo Partner ima) - jednostavan
 // prikaz osnovnih podataka naloga umesto pokusaja da se ucita profil firme
