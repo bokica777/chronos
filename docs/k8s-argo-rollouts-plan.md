@@ -2,6 +2,12 @@
 
 Datum: 03.09.2026.
 
+> **Status (07.09.2026.):** sve četiri faze niže su implementirane (manifesti,
+> skripte, CI/CD workflow) — vidi `docs/k8s-izvestaj.md` za pregled fajlova,
+> uputstvo za pokretanje celog demoa i VAŽNU metodološku napomenu (nije
+> pokrenuto na pravom klasteru, samo sintaksno provereno + ručno unakrsno
+> pregledano). Ovaj dokument ostaje kao zapis odluka i obrazloženja.
+
 Ovo je plan za ono što specifikacija označava kao suštinu diplomskog rada, a
 što je posle Docker faze (`docs/docker-i-v2-izvestaj.md`) i dalje na 0%:
 Kubernetes, Argo Rollouts, observability, CI/CD. Doneo sam konkretne odluke za
