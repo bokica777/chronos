@@ -11,8 +11,16 @@
 # promenljive postavljene ovde (Ključ__PodKljuc konvencija za ugnjezdene ASP.NET
 # Core sekcije).
 #
-# Pokretanje: docker compose -f infra/docker/compose.yaml up --build
+# Pokretanje CELOG kontejnerizovanog sistema: docker compose -f infra/docker/compose.yaml --profile full up --build
 # (iz korena repozitorijuma, jer "context: ../.." mora da se razresi u koren)
+#
+# Svih 7 app kontejnera (auth-api, provider-api, payment-api, gateway,
+# booking-api, notification-api, frontend) ima "profiles: [full]" NAMERNO -
+# run-local.ps1 poziva obican "docker compose up -d" (bez --profile) da bi
+# digao SAMO infrastrukturu (sqlserver/rabbitmq/sqlserver-init) pre nego sto
+# pokrene servise lokalno preko "dotnet run"/"mvnw"/"npm run dev" na istim
+# portovima - bez "profiles" bi se ti isti portovi sudarili sa kontejnerima
+# iz ovog fajla. "--profile full" eksplicitno trazi i app kontejnere.
 
 services:
   sqlserver:
@@ -73,6 +81,7 @@ services:
       context: ../..
       dockerfile: backend/services/auth-service/Dockerfile
     container_name: chronos-auth-api
+    profiles: ["full"]
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Database: "Server=sqlserver,1433;Database=AuthDb;User Id=sa;Password=Chronos!2026;TrustServerCertificate=True;Encrypt=True"
@@ -87,6 +96,7 @@ services:
       context: ../..
       dockerfile: backend/services/provider-service/Dockerfile
     container_name: chronos-provider-api
+    profiles: ["full"]
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Database: "Server=sqlserver,1433;Database=ProviderDb;User Id=sa;Password=Chronos!2026;TrustServerCertificate=True;Encrypt=True"
@@ -105,6 +115,7 @@ services:
       context: ../..
       dockerfile: backend/services/payment-service/Dockerfile
     container_name: chronos-payment-api
+    profiles: ["full"]
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Database: "Server=sqlserver,1433;Database=PaymentDb;User Id=sa;Password=Chronos!2026;TrustServerCertificate=True;Encrypt=True"
@@ -128,6 +139,7 @@ services:
       context: ../..
       dockerfile: backend/gateway/Gateway/Dockerfile
     container_name: chronos-gateway
+    profiles: ["full"]
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       # appsettings.json vec ima "auth-api:8080" itd. kao YARP destinacije (bas
@@ -148,6 +160,7 @@ services:
       context: ../../backend/services/booking-service
       dockerfile: Dockerfile
     container_name: chronos-booking-api
+    profiles: ["full"]
     environment:
       SPRING_DATASOURCE_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=BookingDb;encrypt=true;trustServerCertificate=true"
       SPRING_RABBITMQ_HOST: rabbitmq
@@ -178,6 +191,7 @@ services:
       context: ../../backend/services/notification-service
       dockerfile: Dockerfile
     container_name: chronos-notification-api
+    profiles: ["full"]
     environment:
       # application.properties hardkodira server.port=8082 za lokalni dev (da se
       # ne kosi sa booking-service na istom portu) - Gateway ocekuje 8080 od
@@ -202,6 +216,7 @@ services:
         # host port na koji je gateway mapiran dole, isto sto i lokalni dev.
         VITE_API_BASE_URL: "http://localhost:5076"
     container_name: chronos-frontend
+    profiles: ["full"]
     depends_on:
       - gateway
     ports:

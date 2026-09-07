@@ -28,7 +28,7 @@ liniju, upoređivano sa postojećim radnim kodom i sa zvaničnom dokumentacijom
 alata — npr. Spring-ovom relaxed-binding konvencijom za env promenljive), ali
 **nije lokalno kompajlirano ni pokrenuto od strane mene**. Pre nego što se ovo
 uključi u odbranu rada, preporučujem da se na tvojoj mašini (gde Docker Desktop
-već postoji) jednom pokrene `docker compose up --build` i potvrdi da sve
+već postoji) jednom pokrene `docker compose --profile full up --build` i potvrdi da sve
 provede zdravo — vidi sekciju 5 (Kako pokrenuti) i sekciju 7 (Poznati rizici).
 
 ## 2. Docker — Dockerfile po servisu
@@ -137,7 +137,7 @@ service_completed_successfully` pre nego što krenu.
 **Volumen za upload-ovane slike.** `provider-service` čuva slike provajdera/usluga
 na disku (`wwwroot/uploads/`, vidi `Program.cs`) — bez imenovanog volumena
 (`provider-uploads:/app/wwwroot/uploads`) bi se sve slike izgubile na svaki
-`docker compose up --build`.
+`docker compose --profile full up --build`.
 
 **Booking servis — namerno JEDAN kontejner, ne dva.** Razmišljao sam o tome da
 odmah startujem `booking-api-v1` i `booking-api-v2` kao dva odvojena kontejnera
@@ -149,7 +149,7 @@ sam od toga namerno: to bi zahtevalo izmenu Gateway `appsettings.json`
 između dve verzije iste komponente, ispod jednog K8s Service-a) preuzima Argo
 Rollouts. Za sada je `booking-api` jedan kontejner, čija verzija se bira preko
 `BOOKING_VERSION` env promenljive (podrazumevano `v1`, override-uje se sa
-`BOOKING_VERSION=v2 docker compose up booking-api` za ručno testiranje v2 puta).
+`BOOKING_VERSION=v2 docker compose --profile full up booking-api` za ručno testiranje v2 puta).
 
 **Otkriven i ispravljen bag u planiranju:** Spring-ova "relaxed binding"
 konvencija za environment promenljive **uklanja crtice** iz imena svojstva
@@ -245,7 +245,7 @@ opsluženo od druge verzije, bez potrebe da se gleda u logove poda.
 
 Iz korena repozitorijuma:
 ```powershell
-docker compose -f infra/docker/compose.yaml up --build
+docker compose -f infra/docker/compose.yaml --profile full up --build
 ```
 
 Prvi put će potrajati (build svih 7 image-a + `mvn dependency:go-offline` +
@@ -262,7 +262,7 @@ Admin nalog se i dalje seed-uje automatski pri prvom paljenju `auth-api`
 ### Testiranje v2 Booking ponašanja
 
 ```powershell
-$env:BOOKING_VERSION="v2"; docker compose -f infra/docker/compose.yaml up --build booking-api
+$env:BOOKING_VERSION="v2"; docker compose -f infra/docker/compose.yaml --profile full up --build booking-api
 ```
 Zatim npr. `curl -i http://localhost:8083/api/v1/bookings/...` (kroz Gateway:
 `http://localhost:5076/api/v1/bookings/...`) i proveriti
@@ -273,9 +273,24 @@ propustio).
 ### Gašenje i čišćenje
 
 ```powershell
-docker compose -f infra/docker/compose.yaml down          # zaustavi, zadrži podatke (volumeni ostaju)
-docker compose -f infra/docker/compose.yaml down -v        # zaustavi i obriši i podatke (baze, uploads, rabbitmq)
+docker compose -f infra/docker/compose.yaml --profile full down       # zaustavi SVE (app kontejneri + sqlserver/rabbitmq), zadrži podatke
+docker compose -f infra/docker/compose.yaml --profile full down -v    # zaustavi SVE i obriši i podatke (baze, uploads, rabbitmq)
 ```
+
+### Zašto `--profile full`, i odnos prema `run-local.ps1`
+
+Svih 7 app kontejnera (auth-api, provider-api, payment-api, gateway,
+booking-api, notification-api, frontend) ima `profiles: [full]` u
+`compose.yaml` — namerno. `run-local.ps1` poziva običan
+`docker compose up -d` (bez `--profile`) da digne SAMO infrastrukturu
+(`sqlserver`, `rabbitmq`, `sqlserver-init` — ovi nemaju profil, uvek se
+pokreću) pre nego što servise pokrene lokalno preko `dotnet run`/`mvnw`/
+`npm run dev` na istim portovima. Bez ovog razdvajanja, `run-local.ps1` bi
+posle proširenja `compose.yaml`-a (ova faza) pokušao da digne i sve app
+kontejnere na istim portovima koje `dotnet run` odmah zatim pokušava da
+zauzme — sudar. Kad hoćeš CEO kontejnerizovan sistem, moraš eksplicitno
+tražiti `--profile full`; kad koristiš `run-local.ps1`, ne menja se ništa,
+nastavlja da radi identično kao pre ove faze.
 
 ## 6. Verifikacija — šta je i šta nije provereno
 
@@ -301,7 +316,7 @@ Ono što **nisam mogao** da proverim: da li se `.NET` projekat zaista uspešno
 zavisnost na .NET 10-specifičnu sintaksu), da li Maven build prolazi bez
 mrežnih problema, da li nginx konfiguracija radi tačno kako očekujem, i da li
 `sqlcmd` u `sqlserver-init` batch-u zaista uspešno kreira sve baze bez greške
-u sintaksi. **Preporuka**: prvo pokretanje `docker compose up --build` uraditi
+u sintaksi. **Preporuka**: prvo pokretanje `docker compose --profile full up --build` uraditi
 sa vremenom za debagovanje, ne neposredno pred odbranu.
 
 ## 7. Poznati rizici / stvari za dvostruku proveru
