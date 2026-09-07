@@ -1,0 +1,30 @@
+# kind (Kubernetes IN Docker) konfiguracija za lokalni Chronos klaster.
+# Radi na vrhu Docker Desktop-a. Zvanicni "ingress-nginx za kind" recept:
+# https://kind.sigs.k8s.io/docs/user/ingress/
+#
+# Kreiranje klastera (iz korena repozitorijuma):
+#   kind create cluster --config infra/kubernetes/kind-config.yaml
+# (ili koristiti infra/scripts/create-cluster.ps1, koji radi isto + primenjuje namespace)
+#
+# extraPortMappings mapira host portove 80/443 DIREKTNO na kind node kontejner -
+# ovo je razlog zasto ne treba "kubectl port-forward" da bi se dosao do Ingress-a:
+# http://chronos.local (posle dodavanja u hosts fajl) radi odmah na standardnom
+# HTTP/HTTPS portu, isto kao pravi domen.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: chronos
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP

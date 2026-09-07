@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-api
+  namespace: chronos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-api
+  template:
+    metadata:
+      labels:
+        app: payment-api
+    spec:
+      initContainers:
+        - name: wait-for-sqlserver
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z sqlserver 1433; do echo cekam sqlserver...; sleep 2; done"]
+      containers:
+        - name: payment-api
+          image: chronos/payment-service:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+            - name: ConnectionStrings__Database
+              valueFrom:
+                secretKeyRef:
+                  name: chronos-secrets
+                  key: PAYMENT_DB_CONNECTION
+            - name: Stripe__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: chronos-secrets
+                  key: STRIPE_SECRET_KEY
+            - name: Stripe__PublishableKey
+              valueFrom:
+                secretKeyRef:
+                  name: chronos-secrets
+                  key: STRIPE_PUBLISHABLE_KEY
+            - name: Stripe__WebhookSecret
+              value: ""
+            - name: Frontend__BaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: chronos-config
+                  key: FRONTEND_BASE_URL
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "384Mi"
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-api
+  namespace: chronos
+spec:
+  selector:
+    app: payment-api
+  ports:
+    - port: 8080
+      targetPort: 8080

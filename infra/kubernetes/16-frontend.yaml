@@ -1,0 +1,55 @@
+# Frontend nema svoj /health endpoint (nginx statican sadrzaj) - liveness/readiness
+# na "/" je dovoljno (nginx odgovara 200 cim je kontejner gore, nema zavisnosti
+# od baze/drugih servisa da bi ispravno posluzio staticke fajlove).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: chronos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: chronos/frontend:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "32Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: chronos
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 8080
+      targetPort: 8080

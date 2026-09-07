@@ -1,0 +1,33 @@
+# Jedan stabilan URL za ceo demo (http://chronos.local) umesto zongliranja sa
+# vise portova u terminalu - vidi docs/k8s-argo-rollouts-plan.md sekciju 1.6.
+# Namerno BEZ "rewrite-target" anotacije: gateway (YARP) vec ocekuje pun
+# "/api/v1/..." put (isto sto i danas kroz docker-compose na localhost:5076),
+# pa se prefiks NE sme skidati pri prosledjivanju.
+#
+# Preduslov: "127.0.0.1 chronos.local" u hosts fajlu (vidi
+# infra/scripts/create-cluster.ps1).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chronos-ingress
+  namespace: chronos
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: chronos.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 8080

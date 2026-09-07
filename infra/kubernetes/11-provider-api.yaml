@@ -1,0 +1,89 @@
+# PVC za uploadovane slike (provajderi/usluge) - ekvivalent "provider-uploads"
+# named volume-a iz compose.yaml. Koristi kind-ov podrazumevani "standard"
+# StorageClass (local-path-provisioner, ugradjen u kind od pocetka). Za razliku
+# od baze (03-sqlserver.yaml), ovde je PVC svesno biran umesto emptyDir - gubitak
+# uploadovanih slika restartom pod-a bi bio primetljiviji/iritantniji tokom
+# demoa nego gubitak baze (koja se i onako svaki put sveze inicijalizuje).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: provider-uploads
+  namespace: chronos
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: provider-api
+  namespace: chronos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: provider-api
+  template:
+    metadata:
+      labels:
+        app: provider-api
+    spec:
+      initContainers:
+        - name: wait-for-sqlserver
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z sqlserver 1433; do echo cekam sqlserver...; sleep 2; done"]
+      containers:
+        - name: provider-api
+          image: chronos/provider-service:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+            - name: ConnectionStrings__Database
+              valueFrom:
+                secretKeyRef:
+                  name: chronos-secrets
+                  key: PROVIDER_DB_CONNECTION
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "384Mi"
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/wwwroot/uploads
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: provider-uploads
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: provider-api
+  namespace: chronos
+spec:
+  selector:
+    app: provider-api
+  ports:
+    - port: 8080
+      targetPort: 8080

@@ -1,0 +1,77 @@
+# Napomena o probama: Spring Boot automatski izlaze /actuator/health/liveness i
+# /actuator/health/readiness ("Kubernetes probes" auto-konfiguracija) cim
+# detektuje da se izvrsava unutar Kubernetes-a (prisustvo KUBERNETES_SERVICE_HOST
+# promenljive, koju API server ubacuje u svaki Pod automatski) - bez ijedne
+# linije dodatne konfiguracije u application.properties.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-api
+  namespace: chronos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-api
+  template:
+    metadata:
+      labels:
+        app: notification-api
+    spec:
+      initContainers:
+        - name: wait-for-sqlserver
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z sqlserver 1433; do echo cekam sqlserver...; sleep 2; done"]
+        - name: wait-for-rabbitmq
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z rabbitmq 5672; do echo cekam rabbitmq...; sleep 2; done"]
+      containers:
+        - name: notification-api
+          image: chronos/notification-service:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SERVER_PORT
+              value: "8080"
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chronos-config
+                  key: NOTIFICATION_DB_URL
+            - name: SPRING_RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: chronos-config
+                  key: SPRING_RABBITMQ_HOST
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-api
+  namespace: chronos
+spec:
+  selector:
+    app: notification-api
+  ports:
+    - port: 8080
+      targetPort: 8080

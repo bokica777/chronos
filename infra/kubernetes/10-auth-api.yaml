@@ -1,0 +1,70 @@
+# initContainer koji ceka SQL Server je namerna zamena za compose.yaml-ov
+# "depends_on: condition: service_completed_successfully" - Kubernetes Deployment
+# nema izvorni ekvivalent tog polja, pa bi bez ovoga Pod pokusao migraciju/konekciju
+# ka bazi pre nego sto je sqlserver-init Job zavrsio kreiranje AuthDb, i zavrsio bi
+# u kratkom CrashLoopBackOff-u dok se sam ne oporavi (kubelet restart backoff).
+# Ovako je start deterministican i citak u "kubectl get pods --watch" tokom demoa.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-api
+  namespace: chronos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-api
+  template:
+    metadata:
+      labels:
+        app: auth-api
+    spec:
+      initContainers:
+        - name: wait-for-sqlserver
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z sqlserver 1433; do echo cekam sqlserver...; sleep 2; done"]
+      containers:
+        - name: auth-api
+          image: chronos/auth-service:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+            - name: ConnectionStrings__Database
+              valueFrom:
+                secretKeyRef:
+                  name: chronos-secrets
+                  key: AUTH_DB_CONNECTION
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "384Mi"
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-api
+  namespace: chronos
+spec:
+  selector:
+    app: auth-api
+  ports:
+    - port: 8080
+      targetPort: 8080

@@ -1,0 +1,33 @@
+# Kubernetes ekvivalent "sqlserver-init" jednokratnog kontejnera iz
+# compose.yaml - mssql/server slika nema docker-entrypoint-initdb.d mehanizam,
+# pa se baze moraju eksplicitno kreirati pre nego sto Flyway (booking/notification)
+# ili EF Core migracije (auth/provider/payment) pokusaju da im pristupe.
+#
+# Pokrenuti TEK kad je sqlserver Pod spreman (readinessProbe iz 03-sqlserver.yaml) -
+# infra/scripts/deploy-all.ps1 ovo ceka pre apply-a ovog Job-a, a "backoffLimit"
+# ispod dodatno hvata slucaj da se probe i Job stignu preklopiti.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sqlserver-init
+  namespace: chronos
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: sqlserver-init
+          image: mcr.microsoft.com/mssql/server:2022-latest
+          env:
+            - name: MSSQL_SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: chronos-secrets
+                  key: MSSQL_SA_PASSWORD
+          command: ["bash", "-c"]
+          args:
+            - >
+              for db in AuthDb ProviderDb PaymentDb BookingDb NotificationDb; do
+                /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -P "$MSSQL_SA_PASSWORD" -C -Q "IF DB_ID('$db') IS NULL CREATE DATABASE $db";
+              done

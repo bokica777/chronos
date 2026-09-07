@@ -1,0 +1,11 @@
+# Jedan namespace za CELU aplikaciju (infra + svi servisi) - ovo je lokalni
+# demo klaster za odbranu rada, ne realan multi-environment sistem (vidi
+# docs/k8s-argo-rollouts-plan.md, sekcija 1.2 i docs/decisions/README.md ADR-005).
+#
+# Argo Rollouts kontroler NE ide ovde - on je cluster-wide komponenta i po
+# zvanicnoj konvenciji zivi u svom "argo-rollouts" namespace-u (kreira ga
+# infra/scripts/install-argo-rollouts.ps1, ne ovaj fajl).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chronos

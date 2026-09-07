@@ -1,0 +1,90 @@
+# PRIVREMENO obican Deployment (Faza A) - da ceo sistem odmah radi end-to-end u
+# K8s-u i moze da se testira nezavisno pre nego sto se stigne do Argo Rollouts-a.
+# U Fazi B (infra/argo-rollouts/rollout-booking.yaml) ovaj Deployment se BRISE
+# ("kubectl delete deployment booking-api -n chronos") i zamenjuje Rollout
+# resursom sa istim Pod template labelama (app: booking-api) - Service ispod
+# ostaje NEPROMENJEN jer selektuje po labeli, ne po vlasnistvu (Deployment vs.
+# Rollout), pa gateway/DNS ne primecuju razliku. Vidi
+# docs/k8s-argo-rollouts-plan.md sekciju 1.5 i 5 (redosled izvrsavanja, korak 2).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-api
+  namespace: chronos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: booking-api
+  template:
+    metadata:
+      labels:
+        app: booking-api
+    spec:
+      initContainers:
+        - name: wait-for-sqlserver
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z sqlserver 1433; do echo cekam sqlserver...; sleep 2; done"]
+        - name: wait-for-rabbitmq
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z rabbitmq 5672; do echo cekam rabbitmq...; sleep 2; done"]
+      containers:
+        - name: booking-api
+          image: chronos/booking-service:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chronos-config
+                  key: BOOKING_DB_URL
+            - name: SPRING_RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: chronos-config
+                  key: SPRING_RABBITMQ_HOST
+            - name: BOOKING_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: chronos-config
+                  key: BOOKING_VERSION
+            - name: PROVIDERSERVICE_BASEURL
+              valueFrom:
+                configMapKeyRef:
+                  name: chronos-config
+                  key: PROVIDERSERVICE_BASEURL
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: booking-api
+  namespace: chronos
+spec:
+  selector:
+    app: booking-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

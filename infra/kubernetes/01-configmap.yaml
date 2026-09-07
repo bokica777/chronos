@@ -1,0 +1,37 @@
+# Ne-tajne konfiguracione vrednosti, deljene izmedju servisa - isti obrazac kao
+# "environment:" u infra/docker/compose.yaml, samo kroz envFrom/configMapKeyRef.
+#
+# Servisna imena ispod (sqlserver, rabbitmq, provider-api, gateway...) su ISTA
+# kao container_name u compose.yaml NAMERNO - Kubernetes Service DNS radi na
+# identican nacin kao Docker Compose mreza (ime Service-a = hostname), pa se
+# YARP/Spring konfiguracija koja vec referencira ta imena ne menja nijednim
+# slovom pri prelasku sa Docker Compose na Kubernetes.
+#
+# JDBC URL-ovi za booking/notification (Spring) NAMERNO su ovde, ne u Secret-u -
+# za razliku od .NET ConnectionStrings (koji ugradjuju "User Id=...;Password=...")
+# oni ne nose kredencijale (Spring cita username/password odvojeno iz
+# application.properties, koji ih vec ima hardkodovane za razvojno okruzenje -
+# isti obrazac kao danas u compose.yaml, koji ih iz istog razloga ne prosledjuje).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chronos-config
+  namespace: chronos
+data:
+  RABBITMQ_DEFAULT_USER: "chronos"
+  SPRING_RABBITMQ_HOST: "rabbitmq"
+
+  BOOKING_DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=BookingDb;encrypt=true;trustServerCertificate=true"
+  NOTIFICATION_DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=NotificationDb;encrypt=true;trustServerCertificate=true"
+
+  # v1 podrazumevano, isto kao compose.yaml - Argo Rollouts (Faza B) ovo menja
+  # kroz DVA Deployment-a/Rollout template-a (stable=v1, canary=v2), ne kroz
+  # izmenu ove vrednosti u letu.
+  BOOKING_VERSION: "v1"
+  PROVIDERSERVICE_BASEURL: "http://provider-api:8080"
+
+  # Ingress host (vidi 20-ingress.yaml) - koristi ga payment-api za Stripe
+  # Checkout success/cancel redirect URL, i gateway za CORS. Mora se poklapati
+  # sa unosom u hosts fajlu (127.0.0.1 chronos.local).
+  FRONTEND_BASE_URL: "http://chronos.local"
+  CORS_ALLOWED_ORIGIN: "http://chronos.local"
