@@ -11,6 +11,11 @@ html {
   font-family: "Big Shoulders Text", ui-sans-serif, system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  /* Skoro sve font-size vrednosti u projektu su u rem jedinicama, relativnim
+     prema ovome - podizanje baznog font-size-a sa podrazumevanih 16px na 18px
+     proporcionalno uvecava tekst svuda na sajtu odjednom (bilo je premalo i
+     necitko), umesto lova na desetine pojedinacnih font-size deklaracija. */
+  font-size: 112.5%;
 }
 
 body {
