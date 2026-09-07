@@ -8,6 +8,7 @@ export interface Payment {
   amount: number;
   currency: string;
   status: PaymentStatus;
+  createdAtUtc: string;
 }
 
 // Odgovor pri pokretanju pravog Stripe Checkout toka - front redirektuje

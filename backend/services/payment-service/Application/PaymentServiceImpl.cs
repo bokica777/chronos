@@ -173,5 +173,5 @@ public sealed class PaymentServiceImpl(
     }
 
     private static PaymentResponse ToResponse(Payment payment) =>
-        new(payment.Id, payment.BookingId, payment.Amount, payment.Currency, payment.Status.ToString());
+        new(payment.Id, payment.BookingId, payment.Amount, payment.Currency, payment.Status.ToString(), payment.CreatedAtUtc);
 }
