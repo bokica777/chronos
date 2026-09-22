@@ -7,11 +7,6 @@ import org.springframework.amqp.core.TopicExchange;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * Isti exchange/queue/binding kao u booking-service (infrastructure/messaging/RabbitMQConfig.java) -
- * deklarisano i ovde da notification-service ne zavisi od toga da booking-service prvi kreira
- * topologiju (Spring AMQP deklaracije su idempotentne, oba servisa mogu bezbedno da ih prijave).
- */
 @Configuration
 public class RabbitMQConfig {
 

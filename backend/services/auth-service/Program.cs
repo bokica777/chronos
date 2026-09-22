@@ -1,13 +1,12 @@
-using System.Text;
 using System.Text.Json.Serialization;
 using AuthApplication;
 using AuthDomain;
 using AuthInfrastructure;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.FileProviders;
 using Observability;
+using Security;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
@@ -15,37 +14,24 @@ builder.Services.AddControllers()
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddChronosObservability();
-
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("Jwt:Key is missing.");
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true
-        };
-    });
-builder.Services.AddAuthorization();
+builder.Services.AddChronosJwtAuthentication(builder.Configuration);
 
 var app = builder.Build();
+
+var webRootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+var uploadsPath = Path.Combine(webRootPath, "uploads", "users");
+Directory.CreateDirectory(uploadsPath);
+
 app.UseChronosObservability();
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(webRootPath),
+});
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/", () => new { service = "auth", version = "1.0.0" });
 
-// Primenjuje migracije pri startu - bez ovoga bi u kontejneru (bez razvojnog
-// okruzenja gde neko rucno pokrene "dotnet ef database update") servis pukao
-// na prvom upitu ka bazi. Vec primenjene migracije se preskacu, sigurno je
-// pozivati ovo na svaki start.
 using (var migrationScope = app.Services.CreateScope())
 {
     migrationScope.ServiceProvider.GetRequiredService<AuthDbContext>().Database.Migrate();

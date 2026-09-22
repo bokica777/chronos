@@ -1,3 +1,4 @@
+using Messaging;
 using Microsoft.EntityFrameworkCore;
 using PaymentApplication;
 using PaymentDomain;
@@ -5,9 +6,10 @@ using PaymentDomain;
 namespace PaymentInfrastructure;
 
 public sealed class PaymentDbContext(DbContextOptions<PaymentDbContext> options)
-    : DbContext(options), IPaymentRepository
+    : DbContext(options), IPaymentRepository, IOutboxRepository
 {
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -21,13 +23,25 @@ public sealed class PaymentDbContext(DbContextOptions<PaymentDbContext> options)
             entity.Property(x => x.StripeSessionId).HasMaxLength(200);
             entity.HasIndex(x => x.BookingId);
         });
+
+        modelBuilder.Entity<OutboxMessage>(entity =>
+        {
+            entity.ToTable("OutboxMessages");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Type).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Payload).IsRequired();
+        });
     }
+
+    public async Task AddAsync(OutboxMessage message, CancellationToken cancellationToken) =>
+        await OutboxMessages.AddAsync(message, cancellationToken);
+
+    public Task<List<OutboxMessage>> GetPendingAsync(CancellationToken cancellationToken) =>
+        OutboxMessages.Where(x => x.ProcessedAtUtc == null).ToListAsync(cancellationToken);
 
     public Task<Payment?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
         Payments.SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-    // Ne oslanjamo se na jedinstvenost u bazi (nema unique indeksa na BookingId) -
-    // uzimamo najnoviji ako bi ih ikad slucajno bilo vise za istu rezervaciju.
     public Task<Payment?> FindByBookingIdAsync(Guid bookingId, CancellationToken cancellationToken) =>
         Payments.Where(x => x.BookingId == bookingId)
             .OrderByDescending(x => x.CreatedAtUtc)

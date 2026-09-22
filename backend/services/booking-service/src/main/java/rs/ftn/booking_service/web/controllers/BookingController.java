@@ -7,6 +7,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import rs.ftn.booking_service.application.services.BookingService;
+import rs.ftn.booking_service.domain.loyalty.LoyaltyStatus;
 import rs.ftn.booking_service.domain.models.Booking;
 import rs.ftn.booking_service.web.dtos.BookingResponse;
 import rs.ftn.booking_service.web.dtos.CreateBookingRequest;
@@ -44,7 +45,6 @@ public class BookingController {
         return BookingResponse.fromDomain(booking);
     }
 
-    // Rezervacije ulogovanog korisnika - customerId dolazi iz tokena, ne iz query parametra.
     @GetMapping("/me")
     public List<BookingResponse> listMine(@AuthenticationPrincipal Jwt jwt) {
         List<Booking> bookings = bookingService.listByCustomer(currentUserId(jwt));
@@ -55,7 +55,12 @@ public class BookingController {
         return responses;
     }
 
-    // Ostaje javno (bez prijave) - koristi se za prikaz kalendara dostupnosti gostima.
+    // Kartica lojalnosti ulogovanog kupca (pecati, nivo, trenutni popust).
+    @GetMapping("/me/loyalty")
+    public LoyaltyStatus myLoyalty(@AuthenticationPrincipal Jwt jwt) {
+        return bookingService.getLoyalty(currentUserId(jwt));
+    }
+
     @GetMapping("/provider/{providerId}")
     public List<BookingResponse> listByProvider(@PathVariable UUID providerId) {
         List<Booking> bookings = bookingService.listByProvider(providerId);
@@ -66,7 +71,6 @@ public class BookingController {
         return responses;
     }
 
-    // Admin pregled - sve rezervacije na platformi (zastita hasRole("Admin") je u SecurityConfig).
     @GetMapping("/admin/all")
     public List<BookingResponse> listAllForAdmin() {
         List<Booking> bookings = bookingService.listAll();
@@ -83,7 +87,6 @@ public class BookingController {
         return BookingResponse.fromDomain(booking);
     }
 
-    // "sub" claim iz JWT-a je id ulogovanog korisnika - customerId se nikad ne uzima sa fronta.
     private UUID currentUserId(Jwt jwt) {
         return UUID.fromString(jwt.getSubject());
     }

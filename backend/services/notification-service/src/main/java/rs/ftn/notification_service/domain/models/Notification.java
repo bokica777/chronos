@@ -34,6 +34,9 @@ public class Notification {
     @Column(nullable = false, length = 20)
     private NotificationStatus status;
 
+    @Column(name = "source_event_id", columnDefinition = "uniqueidentifier")
+    private UUID sourceEventId;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -44,13 +47,14 @@ public class Notification {
     }
 
     public Notification(UUID bookingId, UUID customerId, NotificationType type, String channel,
-                         String message, NotificationStatus status) {
+                         String message, NotificationStatus status, UUID sourceEventId) {
         this.bookingId = bookingId;
         this.customerId = customerId;
         this.type = type;
         this.channel = channel;
         this.message = message;
         this.status = status;
+        this.sourceEventId = sourceEventId;
         this.createdAt = LocalDateTime.now();
         this.sentAt = status == NotificationStatus.SENT ? LocalDateTime.now() : null;
     }
@@ -62,6 +66,7 @@ public class Notification {
     public String getChannel() { return channel; }
     public String getMessage() { return message; }
     public NotificationStatus getStatus() { return status; }
+    public UUID getSourceEventId() { return sourceEventId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getSentAt() { return sentAt; }
 }

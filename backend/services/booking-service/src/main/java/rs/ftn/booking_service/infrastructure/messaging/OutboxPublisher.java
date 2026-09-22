@@ -28,6 +28,7 @@ public class OutboxPublisher {
             String routingKey = switch (message.getEventType()) {
                 case "BookingCreated" -> "booking.created";
                 case "BookingCancelled" -> "booking.cancelled";
+                case "BookingPaymentConfirmed" -> "booking.payment-confirmed";
                 default -> "booking.unknown";
             };
             rabbitTemplate.convertAndSend(RabbitMQConfig.BOOKING_EVENTS_EXCHANGE, routingKey, message.getPayload());

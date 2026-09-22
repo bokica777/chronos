@@ -11,10 +11,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
-// Dodaje "X-Booking-Service-Version" na svaki odgovor - jedini nacin da se
-// tokom Argo Rollouts canary rollout-a spolja (npr. curl -i, ili u browser
-// network tabu) vidi da li je bas dati zahtev opsluzio v1 ili v2 pod, dok
-// se saobracaj postepeno preusmerava sa jedne verzije na drugu.
 @Component
 public class VersionHeaderFilter implements Filter {
 

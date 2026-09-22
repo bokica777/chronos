@@ -5,7 +5,8 @@ namespace ProviderApplication;
 
 public sealed class ServiceCatalogServiceImpl(
     IServiceRepository serviceRepository,
-    IProviderRepository providerRepository) : IServiceCatalogService
+    IProviderRepository providerRepository,
+    ICategoryRepository categoryRepository) : IServiceCatalogService
 {
     public async Task<ServiceResponse> CreateServiceAsync(Guid providerId, CreateServiceRequest request, CancellationToken cancellationToken)
     {
@@ -104,6 +105,67 @@ public sealed class ServiceCatalogServiceImpl(
 
         return ToResponse(service);
     }
+
+    public async Task<List<ServiceResponseV2>> GetAllPublicServicesV2Async(CancellationToken cancellationToken)
+    {
+        var services = await serviceRepository.GetAllActivePublicServicesAsync(cancellationToken);
+        var providers = await providerRepository.GetAllAsync(cancellationToken);
+        var categories = await categoryRepository.GetAllCategoriesAsync(cancellationToken);
+
+        var providerNames = providers.ToDictionary(p => p.Id, p => p.Name);
+        var categoryNames = categories.ToDictionary(c => c.Id, c => c.Name);
+
+        return services.Select(service => ToResponseV2(service, providerNames, categoryNames)).ToList();
+    }
+
+    public async Task<ServiceResponseV2> GetPublicServiceV2Async(Guid serviceId, CancellationToken cancellationToken)
+    {
+        var service = await serviceRepository.FindServiceByIdAsync(serviceId, cancellationToken);
+        if (service is null || !service.IsActive)
+        {
+            throw new KeyNotFoundException($"Service {serviceId} was not found.");
+        }
+
+        var provider = await providerRepository.FindByIdAsync(service.ProviderId, cancellationToken);
+        if (provider is null || !provider.IsActive)
+        {
+            throw new KeyNotFoundException($"Service {serviceId} was not found.");
+        }
+
+        var category = await categoryRepository.FindCategoryByIdAsync(service.CategoryId, cancellationToken);
+
+        return new ServiceResponseV2(
+            service.Id,
+            service.ProviderId,
+            provider.Name,
+            service.CategoryId,
+            category?.Name ?? string.Empty,
+            service.Name,
+            service.Description,
+            service.Note,
+            service.ImageUrl,
+            service.DurationMinutes,
+            service.Price,
+            service.IsActive);
+    }
+
+    private static ServiceResponseV2 ToResponseV2(
+        Service service,
+        Dictionary<Guid, string> providerNames,
+        Dictionary<Guid, string> categoryNames) =>
+        new(
+            service.Id,
+            service.ProviderId,
+            providerNames.GetValueOrDefault(service.ProviderId, string.Empty),
+            service.CategoryId,
+            categoryNames.GetValueOrDefault(service.CategoryId, string.Empty),
+            service.Name,
+            service.Description,
+            service.Note,
+            service.ImageUrl,
+            service.DurationMinutes,
+            service.Price,
+            service.IsActive);
 
     private async Task<Service> GetOwnedServiceAsync(Guid providerId, Guid serviceId, CancellationToken cancellationToken)
     {

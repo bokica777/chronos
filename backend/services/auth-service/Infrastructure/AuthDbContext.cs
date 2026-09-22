@@ -20,6 +20,8 @@ public sealed class AuthDbContext(DbContextOptions<AuthDbContext> options)
             entity.Property(x => x.DisplayName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.PasswordHash).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Role).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(x => x.PhoneNumber).HasMaxLength(50);
+            entity.Property(x => x.ImageUrl).HasMaxLength(500);
         });
     }
 

@@ -18,8 +18,6 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     List<Booking> findByCustomerId(UUID customerId);
 
-    // Koristi se za racunanje slobodnih/zauzetih termina na kalendaru -
-    // otkazane rezervacije se ne racunaju kao zauzet termin.
     List<Booking> findByProviderIdAndStatusNot(UUID providerId, BookingStatus status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

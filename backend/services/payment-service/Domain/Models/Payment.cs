@@ -22,9 +22,6 @@ public sealed class Payment
     public PaymentStatus Status { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
-    // ID Stripe Checkout Session-a povezane sa ovim placanjem - null dok se ne
-    // pokrene Stripe checkout tok. Cuva se da bismo, kad se korisnik vrati sa
-    // Stripe stranice (ili kad stigne webhook), znali koju sesiju da proverimo.
     public string? StripeSessionId { get; private set; }
 
     public void AttachStripeSession(string sessionId)
@@ -32,24 +29,8 @@ public sealed class Payment
         StripeSessionId = sessionId;
     }
 
-    public void Complete()
+    public void SetStatus(PaymentStatus status)
     {
-        if (Status != PaymentStatus.Pending)
-            throw new InvalidOperationException("Only a pending payment can be completed.");
-        Status = PaymentStatus.Completed;
-    }
-
-    public void Fail()
-    {
-        if (Status != PaymentStatus.Pending)
-            throw new InvalidOperationException("Only a pending payment can be failed.");
-        Status = PaymentStatus.Failed;
-    }
-
-    public void Refund()
-    {
-        if (Status != PaymentStatus.Completed)
-            throw new InvalidOperationException("Only a completed payment can be refunded.");
-        Status = PaymentStatus.Refunded;
+        Status = status;
     }
 }

@@ -2,9 +2,7 @@ package rs.ftn.booking_service.domain.models;
 
 import jakarta.persistence.*;
 import rs.ftn.booking_service.domain.exceptions.InvalidBookingException;
-import rs.ftn.booking_service.domain.exceptions.InvalidBookingStateException;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -103,24 +101,15 @@ public class Booking {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
-    public void cancel() {
-        if (this.status == BookingStatus.CANCELLED) {
-            throw new InvalidBookingStateException("Booking is already cancelled");
-        }
-        LocalDateTime now = LocalDateTime.now();
-        long hoursUntilStart = Duration.between(now, this.startTime).toHours();
-        if (hoursUntilStart < 24) {
-            this.penaltyAmount = this.price * 0.5;
-        }
-        this.status = BookingStatus.CANCELLED;
-        this.updatedAt = now;
+    public void setStatus(BookingStatus status) {
+        this.status = status;
     }
 
-    public void confirm() {
-        if (this.status != BookingStatus.PENDING) {
-            throw new InvalidBookingStateException("Only a PENDING booking can be confirmed");
-        }
-        this.status = BookingStatus.CONFIRMED;
-        this.updatedAt = LocalDateTime.now();
+    public void setPenaltyAmount(double penaltyAmount) {
+        this.penaltyAmount = penaltyAmount;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

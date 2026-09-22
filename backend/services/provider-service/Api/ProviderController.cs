@@ -40,15 +40,8 @@ public sealed class ProviderController(
     [HttpPut("me")]
     public async Task<ActionResult<ProviderResponse>> UpdateMine(UpdateProviderRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var result = await providerService.UpdateMyProviderAsync(GetOwnerId(), request, cancellationToken);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        var result = await providerService.UpdateMyProviderAsync(GetOwnerId(), request, cancellationToken);
+        return Ok(result);
     }
 
     [Authorize]
@@ -80,45 +73,24 @@ public sealed class ProviderController(
 
         var imageUrl = $"/uploads/providers/{fileName}";
 
-        try
-        {
-            var result = await providerService.UpdateMyImageAsync(GetOwnerId(), imageUrl, cancellationToken);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        var result = await providerService.UpdateMyImageAsync(GetOwnerId(), imageUrl, cancellationToken);
+        return Ok(result);
     }
 
     [Authorize]
     [HttpPatch("me/visibility")]
     public async Task<ActionResult<ProviderResponse>> SetMyVisibility(SetVisibilityRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var result = await providerService.SetMyVisibilityAsync(GetOwnerId(), request.IsVisible, cancellationToken);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        var result = await providerService.SetMyVisibilityAsync(GetOwnerId(), request.IsVisible, cancellationToken);
+        return Ok(result);
     }
 
     [Authorize]
     [HttpDelete("me")]
     public async Task<IActionResult> DeleteMine(CancellationToken cancellationToken)
     {
-        try
-        {
-            await providerService.DeleteMyProviderAsync(GetOwnerId(), cancellationToken);
-            return NoContent();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        await providerService.DeleteMyProviderAsync(GetOwnerId(), cancellationToken);
+        return NoContent();
     }
 
     [HttpGet]
@@ -131,15 +103,8 @@ public sealed class ProviderController(
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ProviderResponse>> Get(Guid id, CancellationToken cancellationToken)
     {
-        try
-        {
-            var result = await providerService.GetProviderAsync(id, cancellationToken);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        var result = await providerService.GetProviderAsync(id, cancellationToken);
+        return Ok(result);
     }
 
     [HttpGet("{id:guid}/services")]
@@ -149,8 +114,6 @@ public sealed class ProviderController(
         return Ok(result);
     }
 
-    // Admin moderacija - vidi i deaktivirane provajdere, i moze da gasi/pali
-    // vidljivost bilo kog provajdera (za razliku od PATCH me/visibility koji je samo-uslužan).
     [Authorize(Roles = "Admin")]
     [HttpGet("admin")]
     public async Task<ActionResult<List<ProviderResponse>>> GetAllForAdmin(CancellationToken cancellationToken)
@@ -163,15 +126,8 @@ public sealed class ProviderController(
     [HttpPatch("{id:guid}/visibility")]
     public async Task<ActionResult<ProviderResponse>> SetVisibilityForAdmin(Guid id, SetVisibilityRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var result = await providerService.SetProviderVisibilityForAdminAsync(id, request.IsVisible, cancellationToken);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        var result = await providerService.SetProviderVisibilityForAdminAsync(id, request.IsVisible, cancellationToken);
+        return Ok(result);
     }
 
     private Guid GetOwnerId()

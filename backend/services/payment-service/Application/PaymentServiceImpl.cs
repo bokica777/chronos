@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Messaging;
 using Microsoft.Extensions.Configuration;
 using PaymentContracts;
@@ -9,23 +10,14 @@ namespace PaymentApplication;
 
 public sealed class PaymentServiceImpl(
     IPaymentRepository paymentRepository,
-    IEventPublisher eventPublisher,
+    IOutboxRepository outboxRepository,
     StripeClient stripeClient,
     IConfiguration configuration) : IPaymentService
 {
-    // Stripe test naplata ide u EUR po fiksnom ilustrativnom kursu - RSD nije na
-    // Stripe-ovoj zvanicnoj listi "zero-decimal" valuta, ali se u praksi ponekad
-    // tako ponasa (poznata nedoslednost), pa bismo rizikovali da naplatimo 100x
-    // pogresan iznos na test kartici. Chronos svuda drugde i dalje vodi cenu u
-    // RSD - ovo je konverzija samo za prikaz na Stripe-ovoj stranici.
     private const decimal RsdToEurRate = 117m;
-
 
     public async Task<PaymentResponse> CreatePaymentAsync(CreatePaymentRequest request, CancellationToken cancellationToken)
     {
-        // Idempotentno - ako front pozove kreiranje vise puta za istu rezervaciju
-        // (npr. dupli klik na "Simuliraj plaćanje"), vraćamo postojeći zapis
-        // umesto da napravimo drugi Payment za istu rezervaciju.
         var existing = await paymentRepository.FindByBookingIdAsync(request.BookingId, cancellationToken);
         if (existing is not null)
         {
@@ -56,12 +48,10 @@ public sealed class PaymentServiceImpl(
         return ToResponse(payment);
     }
 
-    public async Task<PaymentResponse> GetPaymentForBookingAsync(Guid bookingId, CancellationToken cancellationToken)
+    public async Task<PaymentResponse?> GetPaymentForBookingAsync(Guid bookingId, CancellationToken cancellationToken)
     {
-        var payment = await paymentRepository.FindByBookingIdAsync(bookingId, cancellationToken)
-            ?? throw new KeyNotFoundException($"Payment for booking {bookingId} was not found.");
-
-        return ToResponse(payment);
+        var payment = await paymentRepository.FindByBookingIdAsync(bookingId, cancellationToken);
+        return payment is null ? null : ToResponse(payment);
     }
 
     public async Task<List<PaymentResponse>> GetAllPaymentsForAdminAsync(CancellationToken cancellationToken)
@@ -119,9 +109,6 @@ public sealed class PaymentServiceImpl(
         return new StripeCheckoutResponse(session.Id, session.Url);
     }
 
-    // Poziva front kad se korisnik vrati sa Stripe stranice (success_url). Ne
-    // oslanja se samo na ovo - webhook (CompletePaymentByStripeSessionAsync) je
-    // pouzdaniji izvor istine ako korisnik zatvori tab pre povratka.
     public async Task<PaymentResponse> ConfirmStripeSessionAsync(Guid paymentId, CancellationToken cancellationToken)
     {
         var payment = await paymentRepository.FindByIdAsync(paymentId, cancellationToken)
@@ -143,15 +130,11 @@ public sealed class PaymentServiceImpl(
         return ToResponse(payment);
     }
 
-    // Poziva webhook kontroler - Stripe salje session id, ne nas Payment.Id.
     public async Task<PaymentResponse> CompletePaymentByStripeSessionAsync(string stripeSessionId, CancellationToken cancellationToken)
     {
         var payment = await paymentRepository.FindByStripeSessionIdAsync(stripeSessionId, cancellationToken)
             ?? throw new KeyNotFoundException($"No payment found for Stripe session {stripeSessionId}.");
 
-        // Stripe moze poslati isti webhook vise puta (at-least-once isporuka) -
-        // ako je vec zavrseno (npr. korisnik se prvi vratio na success_url), samo
-        // vratimo trenutno stanje umesto da pozovemo Complete() ponovo i dobijemo gresku.
         if (payment.Status == PaymentStatus.Pending)
         {
             await CompleteInternalAsync(payment, cancellationToken);
@@ -162,14 +145,25 @@ public sealed class PaymentServiceImpl(
 
     private async Task CompleteInternalAsync(Payment payment, CancellationToken cancellationToken)
     {
-        payment.Complete();
-        await paymentRepository.SaveChangesAsync(cancellationToken);
+        Complete(payment);
 
-        await eventPublisher.PublishAsync(new PaymentCompleted
+        var payload = JsonSerializer.Serialize(new
         {
-            PaymentId = payment.Id,
-            BookingId = payment.BookingId
-        }, cancellationToken);
+            paymentId = payment.Id,
+            bookingId = payment.BookingId,
+            eventId = Guid.NewGuid()
+        });
+        await outboxRepository.AddAsync(new OutboxMessage("PaymentCompleted", payload), cancellationToken);
+
+        await paymentRepository.SaveChangesAsync(cancellationToken);
+    }
+
+    private static void Complete(Payment payment)
+    {
+        if (payment.Status != PaymentStatus.Pending)
+            throw new InvalidOperationException("Only a pending payment can be completed.");
+
+        payment.SetStatus(PaymentStatus.Completed);
     }
 
     private static PaymentResponse ToResponse(Payment payment) =>

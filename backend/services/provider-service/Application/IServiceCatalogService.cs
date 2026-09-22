@@ -14,4 +14,9 @@ public interface IServiceCatalogService
     Task<ServiceResponse> GetPublicServiceAsync(Guid serviceId, CancellationToken cancellationToken);
     Task<List<ServiceResponse>> GetAllServicesForAdminAsync(CancellationToken cancellationToken);
     Task<ServiceResponse> SetServiceVisibilityForAdminAsync(Guid serviceId, bool isVisible, CancellationToken cancellationToken);
+
+    // v2 API ugovor (api/v2/services) - vraca ServiceResponseV2 sa ugradjenim
+    // ProviderName/CategoryName, vidi napomenu uz ServiceResponseV2 u ServiceContracts.cs.
+    Task<List<ServiceResponseV2>> GetAllPublicServicesV2Async(CancellationToken cancellationToken);
+    Task<ServiceResponseV2> GetPublicServiceV2Async(Guid serviceId, CancellationToken cancellationToken);
 }

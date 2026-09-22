@@ -1,5 +1,6 @@
 package rs.ftn.booking_service.application.services;
 
+import rs.ftn.booking_service.domain.loyalty.LoyaltyStatus;
 import rs.ftn.booking_service.domain.models.Booking;
 import rs.ftn.booking_service.web.dtos.CreateBookingRequest;
 
@@ -10,17 +11,17 @@ public interface BookingService {
 
     Booking createBooking(CreateBookingRequest request, UUID customerId);
 
-    // Vraca rezervaciju samo ako pripada datom customerId-ju, inace baca
-    // BookingNotFoundException (404, ne 403 - ne otkrivamo da li rezervacija
-    // uopste postoji nekom ko nije njen vlasnik).
     Booking getBookingForCustomer(UUID bookingId, UUID customerId);
 
     List<Booking> listByCustomer(UUID customerId);
 
     List<Booking> listByProvider(UUID providerId);
 
-    // Admin pregled - sve rezervacije na platformi, bez filtera.
     List<Booking> listAll();
 
     Booking cancelBookingForCustomer(UUID bookingId, UUID customerId);
+
+    void confirmPayment(UUID bookingId, UUID eventId);
+
+    LoyaltyStatus getLoyalty(UUID customerId);
 }

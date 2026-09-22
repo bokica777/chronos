@@ -28,6 +28,10 @@ public sealed class User
 
     public void SetActive(bool isActive) => IsActive = isActive;
 
+    public void UpdatePhoneNumber(string? phoneNumber) => PhoneNumber = phoneNumber?.Trim();
+
+    public void UpdateImage(string? imageUrl) => ImageUrl = imageUrl?.Trim();
+
     public Guid Id { get; private set; }
     public string Email { get; private set; } = string.Empty;
     public string DisplayName { get; private set; } = string.Empty;
@@ -35,4 +39,6 @@ public sealed class User
     public UserRole Role { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public bool IsActive { get; private set; } = true;
+    public string? PhoneNumber { get; private set; }
+    public string? ImageUrl { get; private set; }
 }

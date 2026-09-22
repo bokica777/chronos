@@ -7,9 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AuthApi;
 
-// Admin upravljanje korisnicima - lista svih naloga, promena role, aktivacija/deaktivacija.
-// Nema DELETE namerno - deaktivacija je bezbednija od brisanja (ne kida FK reference
-// na Provider/Booking zapise koje korisnik moze imati u drugim servisima).
 [ApiController]
 [Authorize(Roles = "Admin")]
 [Route("api/v1/auth/users")]
@@ -30,15 +27,8 @@ public sealed class UsersController(IAuthService authService) : ControllerBase
             return BadRequest(new { message = "You cannot change your own role." });
         }
 
-        try
-        {
-            var result = await authService.UpdateUserRoleAsync(id, request.Role, cancellationToken);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        var result = await authService.UpdateUserRoleAsync(id, request.Role, cancellationToken);
+        return Ok(result);
     }
 
     [HttpPatch("{id:guid}/active")]
@@ -49,15 +39,8 @@ public sealed class UsersController(IAuthService authService) : ControllerBase
             return BadRequest(new { message = "You cannot deactivate your own account." });
         }
 
-        try
-        {
-            var result = await authService.SetUserActiveAsync(id, request.IsActive, cancellationToken);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        var result = await authService.SetUserActiveAsync(id, request.IsActive, cancellationToken);
+        return Ok(result);
     }
 
     private Guid GetCurrentUserId()

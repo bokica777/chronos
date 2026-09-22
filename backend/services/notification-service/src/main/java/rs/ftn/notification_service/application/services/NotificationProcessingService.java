@@ -25,18 +25,28 @@ public class NotificationProcessingService {
         this.notificationSender = notificationSender;
     }
 
-    public void process(NotificationType type, UUID bookingId, UUID customerId, String message) {
+    // Vraca true ako je dogadjaj NOV i obradjen, false ako je duplikat (vec
+    // obradjen eventId). Pozivalac (BookingEventListener) salje mejlove samo
+    // za nove dogadjaje, da ponovljena isporuka iz RabbitMQ-a ne bi poslala
+    // isti mejl dva puta.
+    public boolean process(NotificationType type, UUID bookingId, UUID customerId, String message, UUID eventId) {
+        if (notificationRepository.existsBySourceEventId(eventId)) {
+            log.warn("Event {} already processed, skipping duplicate delivery", eventId);
+            return false;
+        }
+
         NotificationStatus status;
         try {
             notificationSender.send(customerId, CHANNEL, message);
             status = NotificationStatus.SENT;
         } catch (Exception e) {
-            log.error("Slanje obavestenja za rezervaciju {} nije uspelo", bookingId, e);
+            log.error("Failed to send notification for booking {}", bookingId, e);
             status = NotificationStatus.FAILED;
         }
 
-        Notification notification = new Notification(bookingId, customerId, type, CHANNEL, message, status);
+        Notification notification = new Notification(bookingId, customerId, type, CHANNEL, message, status, eventId);
         notificationRepository.save(notification);
-        log.info("Obavestenje {} zabelezeno za rezervaciju {} (status={})", type, bookingId, status);
+        log.info("Notification {} recorded for booking {} (status={})", type, bookingId, status);
+        return true;
     }
 }

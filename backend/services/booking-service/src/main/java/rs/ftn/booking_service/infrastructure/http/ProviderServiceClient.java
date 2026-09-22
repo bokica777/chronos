@@ -12,18 +12,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.UUID;
 
-/**
- * Samo za v2 (vidi booking.version u application.properties) - sinhrona
- * provera kod provider-service-a da provajder i usluga iz zahteva stvarno
- * postoje i da su aktivni, PRE nego sto se rezervacija potvrdi. v1 ovo
- * namerno ne radi (veruje frontu, kao sto je oduvek radio) - ova razlika je
- * bas ono sto Argo Rollouts canary rollout treba da demonstrira: v2 se
- * postepeno pusta na deo saobracaja, i ako ovaj dodatni poziv pravi probleme
- * (kasnjenje, provider-service nedostupan), to se vidi na malom procentu
- * pre nego sto se v2 promovise na sav saobracaj.
- */
 @Component
 public class ProviderServiceClient {
 
@@ -43,22 +36,56 @@ public class ProviderServiceClient {
     }
 
     public void assertProviderAndServiceAreBookable(UUID providerId, UUID serviceId) {
-        ProviderLookup provider = fetch(baseUrl + "/api/v1/providers/" + providerId, ProviderLookup.class);
-        if (provider == null || !provider.isActive()) {
-            throw new InvalidBookingException("Provajder " + providerId + " ne postoji ili nije aktivan.");
-        }
+        fetchActiveProvider(providerId);
 
         ServiceLookup service = fetch(baseUrl + "/api/v1/services/" + serviceId, ServiceLookup.class);
         if (service == null || !service.isActive()) {
-            throw new InvalidBookingException("Usluga " + serviceId + " ne postoji ili nije aktivna.");
+            throw new InvalidBookingException("Service " + serviceId + " does not exist or is not active.");
         }
         if (!service.providerId().equals(providerId)) {
-            throw new InvalidBookingException("Usluga " + serviceId + " ne pripada provajderu " + providerId + ".");
+            throw new InvalidBookingException("Service " + serviceId + " does not belong to provider " + providerId + ".");
         }
     }
 
-    // Vraca null za 404 (ne postoji) - sve ostalo sto nije 200 OK, ili greska
-    // u samoj mrezi/pozivu, tretira se kao neuspesna provera (InvalidBookingException).
+    // v3-only provera: booking mora da upada u radno vreme provajdera. Ovo je
+    // postojalo samo kao validacija na frontu (BookingForm) - v3 je prvi put
+    // da se ista pravila primenjuju i na serveru, sto je jedina razlika u odnosu na v2.
+    public void assertWithinWorkingHours(UUID providerId, LocalDateTime startTime, LocalDateTime endTime) {
+        ProviderLookup provider = fetchActiveProvider(providerId);
+
+        if (provider.workingHoursStart() == null || provider.workingHoursEnd() == null) {
+            log.info("Provider {} has no working hours configured - skipping v3 working-hours check.", providerId);
+            return;
+        }
+
+        LocalTime openTime;
+        LocalTime closeTime;
+        try {
+            openTime = LocalTime.parse(provider.workingHoursStart());
+            closeTime = LocalTime.parse(provider.workingHoursEnd());
+        } catch (DateTimeParseException ex) {
+            log.warn("Provider {} has malformed working hours ({} - {}) - skipping v3 working-hours check.",
+                    providerId, provider.workingHoursStart(), provider.workingHoursEnd());
+            return;
+        }
+
+        LocalTime bookingStart = startTime.toLocalTime();
+        LocalTime bookingEnd = endTime.toLocalTime();
+        if (bookingStart.isBefore(openTime) || bookingEnd.isAfter(closeTime)) {
+            throw new InvalidBookingException(
+                    "Requested time " + bookingStart + "-" + bookingEnd
+                            + " is outside provider's working hours (" + openTime + "-" + closeTime + ").");
+        }
+    }
+
+    private ProviderLookup fetchActiveProvider(UUID providerId) {
+        ProviderLookup provider = fetch(baseUrl + "/api/v1/providers/" + providerId, ProviderLookup.class);
+        if (provider == null || !provider.isActive()) {
+            throw new InvalidBookingException("Provider " + providerId + " does not exist or is not active.");
+        }
+        return provider;
+    }
+
     private <T> T fetch(String url, Class<T> type) {
         try {
             HttpRequest request = HttpRequest.newBuilder(URI.create(url))
@@ -72,20 +99,18 @@ public class ProviderServiceClient {
             }
             if (response.statusCode() != 200) {
                 throw new InvalidBookingException(
-                        "Provider-service je vratio neočekivan status " + response.statusCode() + " za " + url);
+                        "provider-service returned an unexpected status " + response.statusCode() + " for " + url);
             }
             return jsonMapper.readValue(response.body(), type);
         } catch (InvalidBookingException ex) {
             throw ex;
         } catch (Exception ex) {
-            log.warn("Poziv ka provider-service-u ({}) nije uspeo: {}", url, ex.getMessage());
-            throw new InvalidBookingException("Provera kod provider-service-a nije uspela - pokušaj ponovo.");
+            log.warn("Call to provider-service ({}) failed: {}", url, ex.getMessage());
+            throw new InvalidBookingException("Check against provider-service failed - please try again.");
         }
     }
 
-    // Samo polja koja nam trebaju - Jackson ignoriše ostatak JSON odgovora
-    // (isti obrazac kao BookingCreatedEvent/BookingCancelledEvent u notification-service).
-    private record ProviderLookup(UUID id, boolean isActive) {
+    private record ProviderLookup(UUID id, boolean isActive, String workingHoursStart, String workingHoursEnd) {
     }
 
     private record ServiceLookup(UUID id, UUID providerId, boolean isActive) {

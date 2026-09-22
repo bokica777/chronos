@@ -40,15 +40,8 @@ public sealed class ServiceController(
     public async Task<ActionResult<ServiceResponse>> Update(Guid id, UpdateServiceRequest request, CancellationToken cancellationToken)
     {
         var providerId = await ResolveProviderIdAsync(cancellationToken);
-        try
-        {
-            var result = await serviceCatalogService.UpdateServiceAsync(providerId, id, request, cancellationToken);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        var result = await serviceCatalogService.UpdateServiceAsync(providerId, id, request, cancellationToken);
+        return Ok(result);
     }
 
     [HttpPost("{id:guid}/image")]
@@ -80,30 +73,16 @@ public sealed class ServiceController(
         var imageUrl = $"/uploads/services/{fileName}";
         var providerId = await ResolveProviderIdAsync(cancellationToken);
 
-        try
-        {
-            var result = await serviceCatalogService.UpdateServiceImageAsync(providerId, id, imageUrl, cancellationToken);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        var result = await serviceCatalogService.UpdateServiceImageAsync(providerId, id, imageUrl, cancellationToken);
+        return Ok(result);
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var providerId = await ResolveProviderIdAsync(cancellationToken);
-        try
-        {
-            await serviceCatalogService.DeleteServiceAsync(providerId, id, cancellationToken);
-            return NoContent();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        await serviceCatalogService.DeleteServiceAsync(providerId, id, cancellationToken);
+        return NoContent();
     }
 
     private async Task<Guid> ResolveProviderIdAsync(CancellationToken cancellationToken)

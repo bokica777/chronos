@@ -57,6 +57,17 @@ public sealed class CategoryServiceImpl(ICategoryRepository categoryRepository) 
         return ToResponse(category);
     }
 
+    public async Task<CategoryResponse> UpdateCategoryImageAsync(Guid categoryId, string iconUrl, CancellationToken cancellationToken)
+    {
+        var category = await categoryRepository.FindCategoryByIdAsync(categoryId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Category {categoryId} was not found.");
+
+        category.Update(category.Name, iconUrl);
+        await categoryRepository.SaveChangesAsync(cancellationToken);
+
+        return ToResponse(category);
+    }
+
     private static CategoryResponse ToResponse(Category category) =>
         new(category.Id, category.Name, category.IconUrl, category.IsActive);
 }

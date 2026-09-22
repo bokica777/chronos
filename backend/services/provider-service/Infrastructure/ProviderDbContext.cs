@@ -59,7 +59,6 @@ public sealed class ProviderDbContext(DbContextOptions<ProviderDbContext> option
     public Task<List<ProviderProfile>> GetAllAsync(CancellationToken cancellationToken) =>
         Providers.Where(x => x.IsActive).ToListAsync(cancellationToken);
 
-    // Admin pregled - ukljucuje i deaktivirane provajdere (javna lista ih namerno krije).
     public Task<List<ProviderProfile>> GetAllForAdminAsync(CancellationToken cancellationToken) =>
         Providers.ToListAsync(cancellationToken);
 
@@ -74,16 +73,12 @@ public sealed class ProviderDbContext(DbContextOptions<ProviderDbContext> option
     public Task<List<Service>> GetServicesByProviderIdAsync(Guid providerId, CancellationToken cancellationToken) =>
         Services.Where(x => x.ProviderId == providerId).ToListAsync(cancellationToken);
 
-    // Javna "sve usluge" lista - usluga mora biti aktivna I njen provajder mora
-    // biti vidljiv (IsActive), inace bi se ugasen profil i dalje pojavljivao
-    // na javnoj pretrazi usluga.
     public Task<List<Service>> GetAllActivePublicServicesAsync(CancellationToken cancellationToken) =>
         (from service in Services
          join provider in Providers on service.ProviderId equals provider.Id
          where service.IsActive && provider.IsActive
          select service).ToListAsync(cancellationToken);
 
-    // Admin pregled - sve usluge svih provajdera, bez obzira na IsActive.
     public Task<List<Service>> GetAllServicesForAdminAsync(CancellationToken cancellationToken) =>
         Services.ToListAsync(cancellationToken);
 
@@ -98,7 +93,6 @@ public sealed class ProviderDbContext(DbContextOptions<ProviderDbContext> option
     public Task<List<Category>> GetAllCategoriesAsync(CancellationToken cancellationToken) =>
         Categories.Where(x => x.IsActive).ToListAsync(cancellationToken);
 
-    // Admin pregled - i deaktivirane kategorije, da mogu ponovo da se aktiviraju.
     public Task<List<Category>> GetAllCategoriesForAdminAsync(CancellationToken cancellationToken) =>
         Categories.ToListAsync(cancellationToken);
 

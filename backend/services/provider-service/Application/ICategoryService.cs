@@ -9,4 +9,5 @@ public interface ICategoryService
     Task<List<CategoryResponse>> GetAllCategoriesAsync(CancellationToken cancellationToken);
     Task<List<CategoryResponse>> GetAllCategoriesForAdminAsync(CancellationToken cancellationToken);
     Task<CategoryResponse> SetCategoryVisibilityAsync(Guid categoryId, bool isVisible, CancellationToken cancellationToken);
+    Task<CategoryResponse> UpdateCategoryImageAsync(Guid categoryId, string iconUrl, CancellationToken cancellationToken);
 }

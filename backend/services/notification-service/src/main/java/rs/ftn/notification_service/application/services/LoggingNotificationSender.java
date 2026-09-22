@@ -6,11 +6,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
-/**
- * Simulirano slanje - ispisuje obavestenje u log umesto da zaista salje email.
- * Dovoljno za demonstraciju da Notification servis konzumira RabbitMQ evente i
- * reaguje na njih, bez potrebe za pravim SMTP nalogom u razvojnom okruzenju.
- */
 @Component
 public class LoggingNotificationSender implements NotificationSender {
 
@@ -18,6 +13,6 @@ public class LoggingNotificationSender implements NotificationSender {
 
     @Override
     public void send(UUID customerId, String channel, String message) {
-        log.info("[{}] Obavestenje za korisnika {}: {}", channel, customerId, message);
+        log.info("[{}] Notification for customer {}: {}", channel, customerId, message);
     }
 }

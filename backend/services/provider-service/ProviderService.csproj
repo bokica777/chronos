@@ -9,6 +9,7 @@
     <Compile Include="..\..\building-blocks\Contracts\*.cs" Link="BuildingBlocks\Contracts\%(Filename)%(Extension)" />
     <Compile Include="..\..\building-blocks\Messaging\*.cs" Link="BuildingBlocks\Messaging\%(Filename)%(Extension)" />
     <Compile Include="..\..\building-blocks\Observability\*.cs" Link="BuildingBlocks\Observability\%(Filename)%(Extension)" />
+    <Compile Include="..\..\building-blocks\Security\*.cs" Link="BuildingBlocks\Security\%(Filename)%(Extension)" />
   </ItemGroup>
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>

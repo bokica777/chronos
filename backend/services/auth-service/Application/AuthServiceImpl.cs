@@ -87,6 +87,36 @@ public sealed class AuthServiceImpl(
         return ToResponse(user);
     }
 
+    public async Task<UserResponse> GetMyProfileAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var user = await userRepository.FindByIdAsync(userId, cancellationToken)
+            ?? throw new KeyNotFoundException($"User {userId} was not found.");
+
+        return ToResponse(user);
+    }
+
+    public async Task<UserResponse> UpdateMyProfileAsync(Guid userId, string? phoneNumber, CancellationToken cancellationToken)
+    {
+        var user = await userRepository.FindByIdAsync(userId, cancellationToken)
+            ?? throw new KeyNotFoundException($"User {userId} was not found.");
+
+        user.UpdatePhoneNumber(phoneNumber);
+        await userRepository.SaveChangesAsync(cancellationToken);
+
+        return ToResponse(user);
+    }
+
+    public async Task<UserResponse> UpdateMyImageAsync(Guid userId, string imageUrl, CancellationToken cancellationToken)
+    {
+        var user = await userRepository.FindByIdAsync(userId, cancellationToken)
+            ?? throw new KeyNotFoundException($"User {userId} was not found.");
+
+        user.UpdateImage(imageUrl);
+        await userRepository.SaveChangesAsync(cancellationToken);
+
+        return ToResponse(user);
+    }
+
     private static UserResponse ToResponse(User user) =>
-        new(user.Id, user.Email, user.DisplayName, user.Role, user.IsActive, user.CreatedAtUtc);
+        new(user.Id, user.Email, user.DisplayName, user.Role, user.IsActive, user.CreatedAtUtc, user.PhoneNumber, user.ImageUrl);
 }
