@@ -11,7 +11,7 @@ export function LoginPage() {
       <p>Prijavite se da biste upravljali rezervacijama.</p>
       <LoginForm />
       <p className="auth-switch">
-        Nemaš nalog? <a href={routes.register}>Registruj se</a>
+        Nemaš nalog? <a href={`${routes.register}${window.location.search}`}>Registruj se</a>
       </p>
     </>
   );

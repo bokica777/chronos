@@ -19,6 +19,10 @@ COPY . .
 # portu na koji docker-compose mapira Gateway kontejner na host masini.
 ARG VITE_API_BASE_URL=http://localhost:5076
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+# Adresa koja se upisuje u QR kod usluge. Prazno = adresa iz browsera
+# (window.location.origin); za skeniranje telefonom postavi IP racunara u mrezi.
+ARG VITE_PUBLIC_APP_URL=
+ENV VITE_PUBLIC_APP_URL=$VITE_PUBLIC_APP_URL
 RUN npm run build
 
 # --- Runtime stage ---

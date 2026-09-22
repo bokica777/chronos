@@ -9,4 +9,5 @@ export const categoryService = {
     httpClient.post<Category, CreateCategoryRequest>(basePath, request),
   update: (id: string, request: UpdateCategoryRequest) =>
     httpClient.put<Category, UpdateCategoryRequest>(`${basePath}/${id}`, request),
+  uploadImage: (id: string, file: File) => httpClient.upload<Category>(`${basePath}/${id}/image`, file),
 };

@@ -49,6 +49,10 @@ export function ProviderDetailPage({ providerId }: { providerId: string }) {
   const [services, setServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [status, setStatus] = useState<Status>("loading");
+  // Samo JEDNA usluga odjednom prikazuje kalendar/termine (harmonika) - ranije
+  // je svaka kartica u listi imala sopstveni pun kalendar otvoren, sto je na
+  // uzoj kartici (grid kolona) izgledalo izduzeno i haoticno.
+  const [expandedServiceId, setExpandedServiceId] = useState<string | null>(null);
 
   useDocumentTitle(provider ? provider.name : "Pružalac usluge");
 
@@ -146,37 +150,52 @@ export function ProviderDetailPage({ providerId }: { providerId: string }) {
         {services.length === 0 ? (
           <p>Ovaj pružalac usluga još uvek nije dodao nijednu uslugu.</p>
         ) : (
-          <div className="card-grid">
+          <div className="provider-services-list">
             {services.map((service) => {
               const category = categories.find((item) => item.id === service.categoryId);
+              const isExpanded = expandedServiceId === service.id;
               return (
-                <div key={service.id} className="card public-service-card">
-                  <div className="public-service-media">
-                    {service.imageUrl ? (
-                      <img src={resolveImageUrl(service.imageUrl)} alt={service.name} />
-                    ) : (
-                      <div className="provider-card-placeholder">
-                        <StorefrontIcon />
-                      </div>
-                    )}
-                  </div>
-                  <div className="public-service-body">
-                    <div className="service-manage-category">
-                      {category?.iconUrl && <img src={category.iconUrl} alt="" className="service-category-icon" />}
-                      <p className="eyebrow">{category?.name ?? "Bez kategorije"}</p>
+                <div key={service.id} className="card provider-service-row">
+                  <div className="provider-service-row-summary">
+                    <div className="provider-service-row-media">
+                      {service.imageUrl ? (
+                        <img src={resolveImageUrl(service.imageUrl)} alt={service.name} />
+                      ) : (
+                        <div className="provider-card-placeholder">
+                          <StorefrontIcon />
+                        </div>
+                      )}
                     </div>
-                    <h3>{service.name}</h3>
-                    {service.description && <p>{service.description}</p>}
-                    <p className="service-manage-meta">
-                      {service.durationMinutes} min · {service.price} RSD
-                    </p>
-                    <BookingForm
-                      service={service}
-                      providerId={provider.id}
-                      workingHoursStart={provider.workingHoursStart}
-                      workingHoursEnd={provider.workingHoursEnd}
-                    />
+                    <div className="provider-service-row-body">
+                      <div className="service-manage-category">
+                        {category?.iconUrl && <img src={category.iconUrl} alt="" className="service-category-icon" />}
+                        <p className="eyebrow">{category?.name ?? "Bez kategorije"}</p>
+                      </div>
+                      <h3>{service.name}</h3>
+                      {service.description && <p>{service.description}</p>}
+                      <p className="service-manage-meta">
+                        {service.durationMinutes} min · {service.price} RSD
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="button button--primary provider-service-row-toggle"
+                      onClick={() => setExpandedServiceId(isExpanded ? null : service.id)}
+                    >
+                      {isExpanded ? "Zatvori" : "Zakaži"}
+                    </button>
                   </div>
+
+                  {isExpanded && (
+                    <div className="provider-service-row-booking">
+                      <BookingForm
+                        service={service}
+                        providerId={provider.id}
+                        workingHoursStart={provider.workingHoursStart}
+                        workingHoursEnd={provider.workingHoursEnd}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}

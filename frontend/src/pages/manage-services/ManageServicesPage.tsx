@@ -1,6 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { Button } from "../../components/common/Button";
 import { PageHeader } from "../../components/common/PageHeader";
+import { ServiceQrModal } from "../../components/common/ServiceQrModal";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import type { Category } from "../../models/category";
 import type { CreateServiceRequest, Service } from "../../models/service";
@@ -40,6 +41,7 @@ export function ManageServicesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [qrService, setQrService] = useState<Service | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -310,6 +312,9 @@ export function ManageServicesPage() {
                   </p>
                 </div>
                 <div className="service-manage-actions">
+                  <Button type="button" variant="secondary" onClick={() => setQrService(service)}>
+                    Generiši QR kod
+                  </Button>
                   <Button type="button" variant="secondary" onClick={() => handleEdit(service)}>
                     Izmeni
                   </Button>
@@ -321,6 +326,14 @@ export function ManageServicesPage() {
             );
           })}
         </ul>
+      )}
+
+      {qrService && (
+        <ServiceQrModal
+          serviceId={qrService.id}
+          serviceName={qrService.name}
+          onClose={() => setQrService(null)}
+        />
       )}
     </>
   );

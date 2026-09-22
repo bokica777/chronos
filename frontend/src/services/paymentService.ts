@@ -1,4 +1,3 @@
-import type { ApiProblem } from "../models/api";
 import type { Payment, StripeCheckoutResponse } from "../models/payment";
 import { httpClient } from "./api/httpClient";
 
@@ -25,14 +24,10 @@ export const paymentService = {
   // potvrdimo stanje umesto da cekamo webhook.
   confirmStripe: (id: string) =>
     httpClient.post<Payment, Record<string, never>>(`${basePath}/${id}/confirm-stripe`, {}),
-  // 404 znaci da placanje za tu rezervaciju jos ne postoji - to nije greska,
-  // vec normalno stanje pre nego sto korisnik klikne "Simuliraj plaćanje".
+  // Backend vraca 204 (httpClient -> undefined) kad placanje za tu rezervaciju
+  // jos ne postoji - to nije greska, vec normalno stanje pre placanja.
   getByBooking: async (bookingId: string, signal?: AbortSignal): Promise<Payment | null> => {
-    try {
-      return await httpClient.get<Payment>(`${basePath}/booking/${bookingId}`, signal);
-    } catch (error) {
-      if ((error as ApiProblem).status === 404) return null;
-      throw error;
-    }
+    const payment = await httpClient.get<Payment | undefined>(`${basePath}/booking/${bookingId}`, signal);
+    return payment ?? null;
   },
 };

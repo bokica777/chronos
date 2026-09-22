@@ -10,6 +10,7 @@ import { formatDateTime } from "../../../utils/date";
 const typeLabels: Record<Notification["type"], string> = {
   BOOKING_CREATED: "Rezervacija kreirana",
   BOOKING_CANCELLED: "Rezervacija otkazana",
+  BOOKING_PAYMENT_CONFIRMED: "Uplata potvrđena",
 };
 
 type StatusFilter = "all" | Notification["status"];

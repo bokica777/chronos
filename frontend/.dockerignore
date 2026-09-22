@@ -1,3 +1,11 @@
 node_modules
 dist
 .git
+# Lokalni .env (npr. VITE_API_BASE_URL za dev) ne sme da se umesa u Docker
+# build - adrese se zadaju kao build ARG-ovi u compose.yaml.
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+Dockerfile
+.dockerignore

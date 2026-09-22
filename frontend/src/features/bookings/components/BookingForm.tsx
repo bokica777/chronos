@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { routes } from "../../../app/router/routes";
+import { loginWithReturn, routes } from "../../../app/router/routes";
 import { Button } from "../../../components/common/Button";
 import type { ApiProblem } from "../../../models/api";
 import type { Booking } from "../../../models/booking";
@@ -105,6 +105,19 @@ export function BookingForm({ service, providerId, workingHoursStart, workingHou
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isBooked, setIsBooked] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState(0);
+
+  // Popust iz kartice lojalnosti - samo informativno; stvarno ga obracunava
+  // booking-service pri kreiranju rezervacije.
+  useEffect(() => {
+    if (user?.role !== "Client") return;
+    const controller = new AbortController();
+    bookingService
+      .getMyLoyalty(controller.signal)
+      .then((loyalty) => setDiscountPercent(loyalty.discountPercent))
+      .catch(() => setDiscountPercent(0));
+    return () => controller.abort();
+  }, [user]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -148,7 +161,7 @@ export function BookingForm({ service, providerId, workingHoursStart, workingHou
 
   const handleConfirm = async () => {
     if (!user) {
-      window.location.href = routes.login;
+      window.location.href = loginWithReturn(window.location.pathname);
       return;
     }
     if (!selectedDate || selectedMinutes === null) return;
@@ -217,6 +230,14 @@ export function BookingForm({ service, providerId, workingHoursStart, workingHou
           </Button>
         </div>
       </div>
+
+      {discountPercent > 0 && (
+        <p className="booking-loyalty-note">
+          Kartica lojalnosti: -{discountPercent}% — plaćaš{" "}
+          {(Math.round(service.price * (100 - discountPercent)) / 100).toLocaleString("sr-RS")} RSD umesto{" "}
+          {service.price.toLocaleString("sr-RS")} RSD.
+        </p>
+      )}
 
       {error && <p className="form-error">{error}</p>}
 

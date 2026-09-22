@@ -11,7 +11,7 @@ export function RegisterPage() {
       <p>Sakupljaj pogodnosti i zakazuj brže.</p>
       <RegisterForm />
       <p className="auth-switch">
-        Već imaš nalog? <a href={routes.login}>Prijavi se</a>
+        Već imaš nalog? <a href={`${routes.login}${window.location.search}`}>Prijavi se</a>
       </p>
     </>
   );

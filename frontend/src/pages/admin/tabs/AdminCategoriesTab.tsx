@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { Button } from "../../../components/common/Button";
 import type { Category, CreateCategoryRequest } from "../../../models/category";
 import { adminService } from "../../../services/adminService";
 import { categoryService } from "../../../services/categoryService";
+import { resolveImageUrl } from "../../../utils/media";
 
 const emptyForm: CreateCategoryRequest = { name: "", iconUrl: "" };
 
@@ -11,9 +12,18 @@ export function AdminCategoriesTab() {
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
   const [form, setForm] = useState<CreateCategoryRequest>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingIconUrl, setEditingIconUrl] = useState<string | undefined>(undefined);
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (iconPreview) URL.revokeObjectURL(iconPreview);
+    };
+  }, [iconPreview]);
 
   const load = (signal?: AbortSignal) =>
     adminService.categories
@@ -35,13 +45,27 @@ export function AdminCategoriesTab() {
   const handleEdit = (category: Category) => {
     setEditingId(category.id);
     setForm({ name: category.name, iconUrl: category.iconUrl ?? "" });
+    setEditingIconUrl(category.iconUrl);
+    setIconFile(null);
+    setIconPreview(null);
     setErrorMessage(null);
   };
 
   const resetForm = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setEditingIconUrl(undefined);
+    setIconFile(null);
+    setIconPreview(null);
     setErrorMessage(null);
+  };
+
+  const handleIconFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setIconFile(file);
+    setIconPreview(URL.createObjectURL(file));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -49,9 +73,14 @@ export function AdminCategoriesTab() {
     setIsSaving(true);
     setErrorMessage(null);
     try {
-      const saved = editingId
+      let saved = editingId
         ? await categoryService.update(editingId, form)
         : await categoryService.create(form);
+
+      if (iconFile) {
+        saved = await categoryService.uploadImage(saved.id, iconFile);
+      }
+
       setCategories((current) => {
         const exists = current.some((category) => category.id === saved.id);
         return exists
@@ -87,6 +116,8 @@ export function AdminCategoriesTab() {
     );
   }
 
+  const displayIconUrl = iconPreview ?? (editingIconUrl ? resolveImageUrl(editingIconUrl) : undefined);
+
   return (
     <>
       <form className="form-stack service-form" onSubmit={handleSubmit}>
@@ -100,14 +131,24 @@ export function AdminCategoriesTab() {
             required
           />
         </label>
-        <label>
-          Putanja do ikonice (npr. /icons/auto.svg)
-          <input
-            type="text"
-            value={form.iconUrl}
-            onChange={(event) => setForm({ ...form, iconUrl: event.target.value })}
-          />
-        </label>
+        <div className="service-form-image">
+          <div className="service-manage-media service-form-image-preview">
+            {displayIconUrl ? (
+              <img src={displayIconUrl} alt="" />
+            ) : (
+              <div className="service-manage-media-placeholder" aria-hidden="true" />
+            )}
+          </div>
+          <label className="button button--secondary">
+            {iconFile ? "Ikonica izabrana" : "Dodaj ikonicu"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+              onChange={handleIconFileChange}
+              style={{ display: "none" }}
+            />
+          </label>
+        </div>
         <div className="hero-actions">
           <Button type="submit" disabled={isSaving}>
             {isSaving ? "Čuvanje..." : editingId ? "Sačuvaj izmene" : "Dodaj kategoriju"}
@@ -129,7 +170,7 @@ export function AdminCategoriesTab() {
           {categories.map((category) => (
             <li key={category.id} className="card service-manage-row">
               <div className="service-manage-media">
-                {category.iconUrl && <img src={category.iconUrl} alt="" />}
+                {category.iconUrl && <img src={resolveImageUrl(category.iconUrl)} alt="" />}
               </div>
               <div className="service-manage-info">
                 <h3>{category.name}</h3>

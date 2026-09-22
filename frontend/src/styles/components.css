@@ -161,6 +161,13 @@
   text-decoration: none;
 }
 
+.button:disabled {
+  background: var(--color-border);
+  color: var(--color-muted);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .button--primary {
   color: white;
   background: var(--color-primary);
@@ -465,6 +472,78 @@
 .nav {
   position: relative;
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.nav-user-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.6rem 0.3rem 0.3rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 12%);
+  color: white;
+  text-decoration: none;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.nav-user-chip:hover {
+  background: rgb(255 255 255 / 22%);
+}
+
+.site-header.is-scrolled .nav-user-chip {
+  color: var(--color-navbar-dark);
+  background: rgb(11 44 92 / 8%);
+}
+
+.nav-user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgb(255 255 255 / 20%);
+  flex-shrink: 0;
+}
+
+.nav-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.nav-user-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-user-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+@media (max-width: 620px) {
+  .nav-user-name {
+    display: none;
+  }
 }
 
 .nav-toggle {
@@ -708,38 +787,74 @@
   font-size: 1.6rem;
 }
 
-.public-service-card {
-  display: flex;
-  flex-direction: column;
+/* Jedna kolona, pune sirine redovi - umesto uzeg multi-kolonog grida u kome
+   je svaka kartica morala da sadrzi ceo kalendar (BookingForm) istovremeno,
+   sto je izgledalo izduzeno/haoticno na uskoj koloni. Sad je kalendar
+   sakriven dok korisnik ne klikne "Zakazi" za tu konkretnu uslugu. */
+.provider-services-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.provider-service-row {
   padding: 0;
   overflow: hidden;
 }
 
-.public-service-media {
-  aspect-ratio: 16 / 10;
+.provider-service-row-summary {
+  display: grid;
+  grid-template-columns: 140px 1fr auto;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem;
+}
+
+.provider-service-row-media {
+  width: 140px;
+  height: 100px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
   background: var(--color-background);
 }
 
-.public-service-media img {
+.provider-service-row-media img,
+.provider-service-row-media .provider-card-placeholder {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.public-service-body {
-  display: grid;
-  gap: 0.4rem;
+.provider-service-row-body h3 {
+  margin: 0.15rem 0;
+}
+
+.provider-service-row-body p {
+  margin: 0.15rem 0;
+}
+
+.provider-service-row-toggle {
+  white-space: nowrap;
+}
+
+.provider-service-row-booking {
+  border-top: 1px solid var(--color-border);
   padding: 1.25rem;
 }
 
-.public-service-body h3 {
-  margin: 0;
-}
+@media (max-width: 700px) {
+  .provider-service-row-summary {
+    grid-template-columns: 1fr;
+  }
 
-.public-service-body .button {
-  margin-top: 0.5rem;
-  justify-self: start;
+  .provider-service-row-media {
+    width: 100%;
+    height: 160px;
+  }
+
+  .provider-service-row-toggle {
+    justify-self: start;
+  }
 }
 
 .booking-inline-actions {
@@ -1029,10 +1144,16 @@
 }
 
 .marketplace-card {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   padding: 1.1rem;
   text-decoration: none;
   color: inherit;
+}
+
+.marketplace-card > .service-manage-category {
+  margin-bottom: 0.6rem;
 }
 
 .marketplace-card-media {
@@ -1101,7 +1222,12 @@
 
 .marketplace-card-cta {
   display: block;
-  margin-top: 1.1rem;
+  /* margin-top: auto unutar flex kolone (.marketplace-card) - dugme se
+     zalepi za dno kartice bez obzira na duzinu teksta iznad, umesto da
+     "prati" tekst kao ranije (kartice u istom redu grida su razlicite
+     visine, pa je dugme zavrsavalo na razlicitim mestima po redu). */
+  margin-top: auto;
+  padding-top: 1.1rem;
   text-align: center;
 }
 
@@ -1698,6 +1824,10 @@
   height: 84px;
 }
 
+.profile-image-upload-button {
+  margin-bottom: 1.25rem;
+}
+
 .profile-card-danger-zone {
   display: flex;
   flex-wrap: wrap;
@@ -1705,4 +1835,172 @@
   margin-top: 2rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--color-border);
+}
+
+/* Modal (npr. QR kod usluge) */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(15 23 23 / 45%);
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgb(15 23 23 / 25%);
+}
+
+.modal-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  border: none;
+  background: none;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.qr-modal {
+  text-align: center;
+}
+
+.qr-modal h3 {
+  margin: 0.25rem 0 0.5rem;
+}
+
+.qr-modal-hint {
+  margin: 0 0 1rem;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.qr-modal-code {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.qr-modal-link {
+  display: block;
+  font-size: 0.8rem;
+  word-break: break-all;
+  color: var(--color-primary);
+}
+
+.qr-modal-warning {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: var(--color-warning);
+}
+
+.qr-modal-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+/* Kartica lojalnosti (Moje rezervacije) */
+.loyalty-card {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-lg);
+  border-left: 6px solid #b87333;
+}
+
+.loyalty-card--srebrni {
+  border-left-color: #8a9aa6;
+}
+
+.loyalty-card--zlatni {
+  border-left-color: #d4a017;
+}
+
+.loyalty-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.loyalty-card-header h3 {
+  margin: 0.2rem 0 0;
+}
+
+.loyalty-card-discount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1.1;
+}
+
+.loyalty-card-discount span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.loyalty-stamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 0.75rem;
+}
+
+.loyalty-stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  border: 2px dashed var(--color-border);
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  background: #ffffff;
+}
+
+.loyalty-stamp.is-milestone {
+  border-color: var(--color-primary);
+}
+
+.loyalty-stamp.is-filled {
+  border-style: solid;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.card p.loyalty-card-text {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.card p.loyalty-card-rules {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+}
+
+.booking-loyalty-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  color: var(--color-success);
 }

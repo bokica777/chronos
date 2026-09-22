@@ -9,15 +9,68 @@ import { providerService } from "../../services/providerService";
 import { resolveImageUrl } from "../../utils/media";
 import { useAuth } from "../../store/useAuth";
 import { roleLabels } from "../../models/user";
+import { authService } from "../../services/authService";
+
+function UserPlaceholderIcon() {
+  return (
+    <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+    </svg>
+  );
+}
 
 // Klijent i admin nemaju provider profil (samo Partner ima) - jednostavan
-// prikaz osnovnih podataka naloga umesto pokusaja da se ucita profil firme
-// koji za njih ne postoji (ranije je ProfilePage bezuslovno zvao
-// providerService.getMine() i bezuslovno prikazivao "Partner" natpis, bez
-// obzira ko je ulogovan - otud bag da se korisniku prikazivalo da je partner).
+// prikaz/izmena osnovnih podataka naloga (ime, mejl su fiksni; slika i
+// telefon se mogu urediti) umesto pokusaja da se ucita profil firme koji za
+// njih ne postoji.
 function SimpleAccountProfile() {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber ?? "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   if (!user) return null;
+
+  const startEditing = () => {
+    setPhoneNumber(user.phoneNumber ?? "");
+    setErrorMessage(null);
+    setIsEditing(true);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setErrorMessage(null);
+    try {
+      const updated = await authService.updateMyProfile({ phoneNumber: phoneNumber || null });
+      setUser({ ...user, ...updated });
+      setIsEditing(false);
+    } catch {
+      setErrorMessage("Čuvanje nije uspelo. Pokušaj ponovo.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    setErrorMessage(null);
+    try {
+      const updated = await authService.uploadMyImage(file);
+      setUser({ ...user, ...updated });
+    } catch {
+      setErrorMessage("Otpremanje slike nije uspelo. Podržani formati: jpg, png, webp, gif (do 5MB).");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   return (
     <>
@@ -28,20 +81,77 @@ function SimpleAccountProfile() {
         className="page-header--centered"
       />
       <div className="card profile-card">
-        <div className="profile-view-fields">
-          <div className="profile-view-field">
-            <h3>Ime</h3>
-            <p>{user.displayName}</p>
+        <button
+          type="button"
+          className="profile-card-edit-toggle"
+          onClick={() => (isEditing ? setIsEditing(false) : startEditing())}
+          aria-label={isEditing ? "Otkaži izmene" : "Izmeni profil"}
+          title={isEditing ? "Otkaži izmene" : "Izmeni profil"}
+        >
+          {isEditing ? "✕" : "✎"}
+        </button>
+
+        {errorMessage && <p className="form-error">{errorMessage}</p>}
+
+        <div className="profile-card-header">
+          <div className="profile-card-avatar">
+            {user.imageUrl ? (
+              <img src={resolveImageUrl(user.imageUrl)} alt={user.displayName} />
+            ) : (
+              <div className="provider-card-placeholder">
+                <UserPlaceholderIcon />
+              </div>
+            )}
           </div>
-          <div className="profile-view-field">
-            <h3>Email</h3>
-            <p>{user.email}</p>
-          </div>
-          <div className="profile-view-field">
-            <h3>Vrsta naloga</h3>
-            <p>{roleLabels[user.role]}</p>
+          <div className="profile-card-heading">
+            <h1>{user.displayName}</h1>
           </div>
         </div>
+
+        {isEditing && (
+          <label className="button button--secondary profile-image-upload-button">
+            {isUploadingImage ? "Otpremanje..." : "Promeni sliku"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={handleImageChange}
+              disabled={isUploadingImage}
+              style={{ display: "none" }}
+            />
+          </label>
+        )}
+
+        {!isEditing ? (
+          <div className="profile-view-fields">
+            <div className="profile-view-field">
+              <h3>Email</h3>
+              <p>{user.email}</p>
+            </div>
+            <div className="profile-view-field">
+              <h3>Telefon</h3>
+              <p>{user.phoneNumber || "Nije uneto."}</p>
+            </div>
+            <div className="profile-view-field">
+              <h3>Vrsta naloga</h3>
+              <p>{roleLabels[user.role]}</p>
+            </div>
+          </div>
+        ) : (
+          <form className="form-stack" onSubmit={handleSubmit}>
+            <label>
+              Telefon
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(event) => setPhoneNumber(event.target.value)}
+                placeholder="npr. 0601234567"
+              />
+            </label>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? "Čuvanje..." : "Sačuvaj"}
+            </Button>
+          </form>
+        )}
       </div>
     </>
   );

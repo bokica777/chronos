@@ -90,9 +90,17 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  gap: 1.5rem;
+  /* Eksplicitan height (ne samo min-height) namerno iskljucuje default grid
+     "align-items: stretch" ponasanje za ovu stavku - bez ovoga, footer red
+     u .app-layout gridu je mogao da se rastegne preko dostupnog prostora na
+     kratkim stranicama (npr. prazna lista na "Moje rezervacije"), pa je
+     footer izgledao razvuceno umesto kao tanka traka zalepljena za dno. */
+  height: var(--footer-height);
   min-height: var(--footer-height);
+  max-height: var(--footer-height);
+  flex-shrink: 0;
+  align-self: end;
+  gap: 1.5rem;
   padding-inline: 1.5rem;
   padding-block: 1rem;
   background: transparent;

@@ -205,12 +205,12 @@ export function ServicesPage() {
                     </div>
                   )}
                 </div>
+                <div className="service-manage-category">
+                  {category?.iconUrl && <img src={category.iconUrl} alt="" className="service-category-icon" />}
+                  <p className="eyebrow">{category?.name ?? "Bez kategorije"}</p>
+                </div>
                 <div className="marketplace-card-columns">
                   <div className="marketplace-card-service">
-                    <div className="service-manage-category">
-                      {category?.iconUrl && <img src={category.iconUrl} alt="" className="service-category-icon" />}
-                      <p className="eyebrow">{category?.name ?? "Bez kategorije"}</p>
-                    </div>
                     <h3>{service.name}</h3>
                     {service.description && <p>{service.description}</p>}
                     <p className="service-manage-meta">

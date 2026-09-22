@@ -79,7 +79,10 @@ export function AppRouter() {
 
     switch (path) {
       case routes.home:
-        return <HomePage />;
+        // Marketing/landing stranica je za goste - ulogovan korisnik ovde
+        // odmah vidi usluge, ne "Prijavi se"/"Nastavi kao gost" dugmad koja
+        // za njega vise nema smisla.
+        return user ? <ServicesPage /> : <HomePage />;
       case routes.providers:
         return <ProvidersPage />;
       case routes.services:

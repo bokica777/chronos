@@ -1,4 +1,4 @@
-export type NotificationType = "BOOKING_CREATED" | "BOOKING_CANCELLED";
+export type NotificationType = "BOOKING_CREATED" | "BOOKING_CANCELLED" | "BOOKING_PAYMENT_CONFIRMED";
 export type NotificationStatus = "SENT" | "FAILED";
 
 // Dolazi iz notification-service - konzumuje RabbitMQ evente koje objavljuje

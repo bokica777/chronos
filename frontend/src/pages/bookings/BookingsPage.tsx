@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../../components/common/PageHeader";
 import { BookingList } from "../../features/bookings/components/BookingList";
+import { LoyaltyCard } from "../../features/bookings/components/LoyaltyCard";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import type { Booking, BookingStatus } from "../../models/booking";
+import type { LoyaltyStatus } from "../../models/loyalty";
 import type { Payment } from "../../models/payment";
 import type { Provider } from "../../models/provider";
 import type { Service } from "../../models/service";
@@ -40,6 +42,7 @@ export function BookingsPage() {
   const [services, setServices] = useState<Record<string, Service>>({});
   const [payments, setPayments] = useState<Record<string, Payment | null>>({});
   const [payingBookingId, setPayingBookingId] = useState<string | null>(null);
+  const [loyalty, setLoyalty] = useState<LoyaltyStatus | null>(null);
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,6 +56,13 @@ export function BookingsPage() {
     }
 
     const controller = new AbortController();
+
+    // Kartica lojalnosti se ucitava nezavisno - ako ne uspe, lista rezervacija
+    // se svejedno prikazuje (samo bez kartice).
+    bookingService
+      .getMyLoyalty(controller.signal)
+      .then(setLoyalty)
+      .catch(() => setLoyalty(null));
 
     bookingService
       .getMine(controller.signal)
@@ -231,6 +241,8 @@ export function BookingsPage() {
   return (
     <>
       <PageHeader eyebrow="Nalog" title="Moje rezervacije" />
+
+      {loyalty && <LoyaltyCard loyalty={loyalty} />}
 
       {bookings.length > 0 && (
         <div className="services-toolbar">

@@ -17,6 +17,12 @@ export interface User {
   // Prisutno samo u odgovorima gde ih backend salje (npr. admin lista korisnika).
   isActive?: boolean;
   createdAt?: string;
+  phoneNumber?: string | null;
+  imageUrl?: string | null;
+}
+
+export interface UpdateMyProfileRequest {
+  phoneNumber: string | null;
 }
 
 export interface LoginRequest {
