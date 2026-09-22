@@ -1,0 +1,104 @@
+# POKRETANJE CANARY ROLLOUT-A (demo): primeniti ovaj fajl nad vec pokrenutim
+# stabilnim stanjem (v1 ili v2):
+#   kubectl apply -f infra/argo-rollouts/rollout-booking-v3.yaml
+#
+# Argo Rollouts detektuje promenu Pod template-a (BOOKING_VERSION -> v3, jedina
+# razlika u odnosu na rollout-booking.yaml / rollout-booking-v2.yaml) i pokrece
+# canary korake (10% -> analiza -> 50% -> analiza -> 100%) definisane u
+# strategy.canary.steps - identicno kao pri prelasku v1 -> v2.
+#
+# Sta v3 radi drugacije od v2 (vidi BookingServiceImpl.createBooking i
+# ProviderServiceClient.assertWithinWorkingHours u booking-service):
+#   v1: bez validacije prema provider-service
+#   v2: v1 + proverava da provajder i usluga postoje i da su aktivni
+#   v3: v2 + proverava da zahtevano vreme rezervacije upada u radno vreme
+#       provajdera (WorkingHoursStart/End) - dosad se ta provera radila SAMO
+#       na frontu (BookingForm), v3 je prvi put da se ponavlja i na serveru.
+#
+# Pracenje uzivo:
+#   kubectl argo rollouts get rollout booking-api -n chronos --watch
+#
+# Rucna promocija izmedju koraka:
+#   kubectl argo rollouts promote booking-api -n chronos
+#
+# POVRATAK na prethodno stabilno stanje posle demoa: ponovo primeniti
+# rollout-booking.yaml (v1) ili rollout-booking-v2.yaml (v2).
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: booking-api
+  namespace: chronos
+spec:
+  replicas: 4
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: booking-api
+  strategy:
+    canary:
+      analysis:
+        templates:
+          - templateName: booking-error-rate
+        startingStep: 1
+      steps:
+        - setWeight: 10
+        - pause: {}
+        - setWeight: 50
+        - pause: {}
+        - setWeight: 100
+  template:
+    metadata:
+      labels:
+        app: booking-api
+    spec:
+      initContainers:
+        - name: wait-for-sqlserver
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z sqlserver 1433; do echo cekam sqlserver...; sleep 2; done"]
+        - name: wait-for-rabbitmq
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z rabbitmq 5672; do echo cekam rabbitmq...; sleep 2; done"]
+      containers:
+        - name: booking-api
+          image: chronos/booking-service:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: chronos-config
+                  key: BOOKING_DB_URL
+            - name: SPRING_RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: chronos-config
+                  key: SPRING_RABBITMQ_HOST
+            - name: BOOKING_VERSION
+              value: "v3"
+            - name: PROVIDERSERVICE_BASEURL
+              valueFrom:
+                configMapKeyRef:
+                  name: chronos-config
+                  key: PROVIDERSERVICE_BASEURL
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10

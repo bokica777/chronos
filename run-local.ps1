@@ -1,4 +1,4 @@
-# Pokrece kompletan Chronos sistem lokalno: infrastrukturu (SQL Server, RabbitMQ),
+﻿# Pokrece kompletan Chronos sistem lokalno: infrastrukturu (SQL Server, RabbitMQ),
 # sve mikroservise, Gateway i frontend, svaki u svom prozoru.
 #
 # Pokretanje (iz korena repozitorijuma, u PowerShell-u):
@@ -20,6 +20,7 @@ function Start-ServiceWindow($name, $workDir, $command) {
 
 Write-Host "2/3 Pokrecem mikroservise..." -ForegroundColor Cyan
 Start-ServiceWindow "Booking Service (Java)" "$root\backend\services\booking-service" ".\mvnw.cmd spring-boot:run"
+Start-ServiceWindow "Notification Service (Java)" "$root\backend\services\notification-service" ".\mvnw.cmd spring-boot:run"
 Start-ServiceWindow "Auth Service"           "$root\backend\services\auth-service"     "dotnet run"
 Start-ServiceWindow "Provider Service"       "$root\backend\services\provider-service" "dotnet run"
 Start-ServiceWindow "Payment Service"        "$root\backend\services\payment-service"  "dotnet run"

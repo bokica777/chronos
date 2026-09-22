@@ -114,3 +114,57 @@ odbrani, spominje se kao poznato proširenje za pravu produkciju, bez da se
 implementira. Puna lista svesno izostavljenih delova:
 `docs/k8s-argo-rollouts-plan.md` (sekcija 6).
 
+## ADR-011: hardkodovan admin nalog u auth-service (poznato ograničenje, namerno ostavljeno)
+
+**Kontekst.** `auth-service/Program.cs`, funkcija `SeedAdminAsync`, na svakom
+startu servisa proverava da li postoji korisnik sa mejlom `admin@admin.com` i,
+ako ne postoji, kreira ga sa lozinkom `admin` (heširanom istim
+`IPasswordHasher<User>` koji se koristi i za sve ostale naloge). Vrednosti su
+doslovno upisane u kod, ne dolaze iz konfiguracije/environment promenljive.
+
+**Odluka.** Kod se namerno ostavlja kako jeste — nema izdvajanja u
+`appsettings`/env promenljive niti generisanja nasumične lozinke pri prvom
+pokretanju. Ovo je svesno prihvaćeno pojednostavljenje radi predvidljivog
+demo/odbrana scenarija (uvek se zna admin nalog bez dodatnog koraka), a ne
+propust — samo treba biti eksplicitno imenovano jer bi u pravoj produkciji
+bilo bezbednosni propust.
+
+**Posledice.** Za pravu produkciju bi ovo trebalo zameniti jednim od: (a)
+lozinka iz environment promenljive/secrets managera koja se učitava samo pri
+prvom seed-u, (b) generisanje nasumične lozinke pri prvom pokretanju i njeno
+ispisivanje samo u log pri tom prvom pokretanju, ili (c) potpuno uklanjanje
+auto-seed-a i ručno kreiranje prvog admin naloga kroz migraciju/CLI alat.
+Nijedno od ovoga nije implementirano — ovo je poznato ograničenje vredno
+pomena na odbrani, ne skriveni propust.
+
+## ADR-012: dva namerno različita mehanizma verzionisanja — deployment (booking-service) i API-ugovor (provider-service)
+
+**Kontekst.** Tema rada je "verzionisanje mikroservisa", a postoje bar dva
+uobičajena, ali suštinski različita značenja tog pojma: (a) *deployment/rollout
+verzionisanje* — više instanci istog servisa istovremeno u produkciji radi
+postepenog/bezbednog prelaska (ono što booking-service v1/v2/v3 već radi preko
+`BOOKING_VERSION` env promenljive i Argo Rollouts canary-ja), i (b)
+*API/ugovor verzionisanje* — više paralelnih javnih ugovora istog servisa radi
+kompatibilnosti sa starijim klijentima dok se ugovor menja (uobičajeno
+`/api/v1/...` naspram `/api/v2/...`). Do sada je u projektu postojao samo prvi
+mehanizam.
+
+**Odluka.** Umesto da se drugi servis (provider-service) verzioniše na isti
+način kao booking-service (što bi samo ponovilo već demonstrirani mehanizam),
+provider-service dobija **URL-path verzionisanje pravog API ugovora**:
+`GET /api/v2/services` postoji paralelno sa `GET /api/v1/services`
+(`PublicServicesController` naspram `PublicServicesV2Controller`) i vraća
+stvarno drugačiji oblik podataka (`ServiceResponseV2` ugrađuje
+`ProviderName`/`CategoryName` direktno u odgovor, umesto da klijent mora da
+radi dodatne pozive) — ne samo drugu putanju sa istim sadržajem. v1 ostaje
+netaknut i i dalje je ono što frontend koristi, tako da postojeći klijenti
+nisu pogođeni.
+
+**Posledice.** Rad demonstrira oba legitimna značenja "verzionisanja" na
+konkretnim, radnim primerima, umesto da izgleda kao da je isti mehanizam samo
+kopiran na drugi servis. Cena je mala namerna asimetrija u kodu (dva
+kontrolera za javne usluge umesto jednog) — prihvatljivo jer je svrha upravo
+da se razlika vidi. Detaljno uputstvo (kako se prelazi sa v1 na v2/v3, kako se
+proverava koja verzija trenutno radi, po jedno za oba mehanizma):
+`docs/versioning-guide.md`.
+

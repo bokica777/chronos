@@ -1,0 +1,10 @@
+-- =============================================================================
+-- Demo seed: partnerski profili i usluge.
+--
+-- OVAJ FAJL JE PLACEHOLDER. Popuni ga tako sto ces pokrenuti
+-- 00-generate-provider-seed.sql nad ProviderDb (nakon sto su partnerski
+-- podaci uneti kroz aplikaciju) i zalepiti dobijeni tekstualni izlaz ovde,
+-- zamenjujuci ovaj komentar.
+--
+-- Vidi README.md u ovom folderu za ceo postupak.
+-- =============================================================================

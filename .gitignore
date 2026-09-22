@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 secrets/
+secrets.properties
 
 # .NET
 **/bin/

@@ -30,6 +30,13 @@ data:
   BOOKING_VERSION: "v1"
   PROVIDERSERVICE_BASEURL: "http://provider-api:8080"
 
+  # Vidi 02-secret.yaml (SMTP_USERNAME/PASSWORD/FROM) i
+  # docs/notification-email-setup.md - podrazumevano iskljuceno, promeni u
+  # "true" tek kad su SMTP_* vrednosti u Secret-u popunjene.
+  NOTIFICATIONS_PROVIDER_EMAIL_ENABLED: "false"
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+
   # Ingress host (vidi 20-ingress.yaml) - koristi ga payment-api za Stripe
   # Checkout success/cancel redirect URL, i gateway za CORS. Mora se poklapati
   # sa unosom u hosts fajlu (127.0.0.1 chronos.local).

@@ -14,6 +14,11 @@
 # Pokretanje CELOG kontejnerizovanog sistema: docker compose -f infra/docker/compose.yaml --profile full up --build
 # (iz korena repozitorijuma, jer "context: ../.." mora da se razresi u koren)
 #
+# Podesavanja koja se menjaju (SMTP za mejlove, adresa racunara za QR kod)
+# citaju se iz infra/docker/.env - kopiraj .env.example u .env i popuni.
+# .env je u .gitignore, lozinke ne idu na git. Bez .env sve radi, samo su
+# mejlovi iskljuceni, a linkovi vode na localhost.
+#
 # Svih 7 app kontejnera (auth-api, provider-api, payment-api, gateway,
 # booking-api, notification-api, frontend) ima "profiles: [full]" NAMERNO -
 # run-local.ps1 poziva obican "docker compose up -d" (bez --profile) da bi
@@ -82,6 +87,7 @@ services:
       dockerfile: backend/services/auth-service/Dockerfile
     container_name: chronos-auth-api
     profiles: ["full"]
+    restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Database: "Server=sqlserver,1433;Database=AuthDb;User Id=sa;Password=Chronos!2026;TrustServerCertificate=True;Encrypt=True"
@@ -90,6 +96,9 @@ services:
         condition: service_completed_successfully
     ports:
       - "5094:8080"
+    volumes:
+      # Profilne slike korisnika (wwwroot/uploads/users) prezive rebuild.
+      - auth-uploads:/app/wwwroot/uploads
 
   provider-api:
     build:
@@ -97,6 +106,7 @@ services:
       dockerfile: backend/services/provider-service/Dockerfile
     container_name: chronos-provider-api
     profiles: ["full"]
+    restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Database: "Server=sqlserver,1433;Database=ProviderDb;User Id=sa;Password=Chronos!2026;TrustServerCertificate=True;Encrypt=True"
@@ -116,6 +126,7 @@ services:
       dockerfile: backend/services/payment-service/Dockerfile
     container_name: chronos-payment-api
     profiles: ["full"]
+    restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Database: "Server=sqlserver,1433;Database=PaymentDb;User Id=sa;Password=Chronos!2026;TrustServerCertificate=True;Encrypt=True"
@@ -127,10 +138,15 @@ services:
       Stripe__WebhookSecret: ""
       # Ide u Stripe Checkout success/cancel redirect URL - korisnikov browser
       # otvara ovo POSLE placanja, pa mora biti host-port frontenda, ne container ime.
-      Frontend__BaseUrl: "http://localhost:5173"
+      Frontend__BaseUrl: "http://${CHRONOS_HOST:-localhost}:5173"
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: chronos
+      RabbitMQ__Password: "Chronos!2026"
     depends_on:
       sqlserver-init:
         condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "5164:8080"
 
@@ -140,12 +156,16 @@ services:
       dockerfile: backend/gateway/Gateway/Dockerfile
     container_name: chronos-gateway
     profiles: ["full"]
+    restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       # appsettings.json vec ima "auth-api:8080" itd. kao YARP destinacije (bas
       # ova imena Docker servisa) - ne treba override-ovati Clusters, samo CORS
       # (bazni appsettings.json ima placeholder "https://chronos.example.com").
       Cors__AllowedOrigins__0: "http://localhost:5173"
+      # Dodatni origin kad se aplikacija otvara preko IP adrese racunara
+      # (npr. sa telefona posle skeniranja QR koda) - CHRONOS_HOST iz .env.
+      Cors__AllowedOrigins__1: "http://${CHRONOS_HOST:-localhost}:5173"
     depends_on:
       - auth-api
       - provider-api
@@ -161,6 +181,7 @@ services:
       dockerfile: Dockerfile
     container_name: chronos-booking-api
     profiles: ["full"]
+    restart: unless-stopped
     environment:
       SPRING_DATASOURCE_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=BookingDb;encrypt=true;trustServerCertificate=true"
       SPRING_RABBITMQ_HOST: rabbitmq
@@ -192,6 +213,7 @@ services:
       dockerfile: Dockerfile
     container_name: chronos-notification-api
     profiles: ["full"]
+    restart: unless-stopped
     environment:
       # application.properties hardkodira server.port=8082 za lokalni dev (da se
       # ne kosi sa booking-service na istom portu) - Gateway ocekuje 8080 od
@@ -199,11 +221,31 @@ services:
       SERVER_PORT: "8080"
       SPRING_DATASOURCE_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=NotificationDb;encrypt=true;trustServerCertificate=true"
       SPRING_RABBITMQ_HOST: rabbitmq
+      PROVIDERSERVICE_BASEURL: "http://provider-api:8080"
+      # Slanje mejlova (kupcu i partneru) je podrazumevano iskljuceno (vidi
+      # docs/notification-email-setup.md) - da bi se ukljucilo, izvezi ove
+      # promenljive u shell-u PRE "docker compose up" (npr.
+      # NOTIFICATIONS_EMAIL_ENABLED=true SMTP_USERNAME=... SMTP_PASSWORD=... docker compose --profile full up).
+      NOTIFICATIONS_EMAIL_ENABLED: "${NOTIFICATIONS_EMAIL_ENABLED:-false}"
+      AUTHSERVICE_BASEURL: "http://auth-api:8080"
+      INTERNAL_API_KEY: "Chronos-Dev-Internal-Key-2026"
+      # Link "Pogledaj moje rezervacije" u mejlovima.
+      FRONTEND_URL: "http://${CHRONOS_HOST:-localhost}:5173"
+      SMTP_HOST: "${SMTP_HOST:-smtp.gmail.com}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USERNAME: "${SMTP_USERNAME:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      SMTP_FROM: "${SMTP_FROM:-}"
     depends_on:
       sqlserver-init:
         condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
+      # Za mejlove dohvata podatke kupca (auth) i partnera/usluge (provider).
+      auth-api:
+        condition: service_started
+      provider-api:
+        condition: service_started
     ports:
       - "8082:8080"
 
@@ -214,9 +256,12 @@ services:
       args:
         # Bakuje se u JS bundle na build-u (vidi frontend/Dockerfile) - 5076 je
         # host port na koji je gateway mapiran dole, isto sto i lokalni dev.
-        VITE_API_BASE_URL: "http://localhost:5076"
+        VITE_API_BASE_URL: "http://${CHRONOS_HOST:-localhost}:5076"
+        # Adresa u QR kodu usluge (Menadzer usluga -> "Generisi QR kod").
+        VITE_PUBLIC_APP_URL: "http://${CHRONOS_HOST:-localhost}:5173"
     container_name: chronos-frontend
     profiles: ["full"]
+    restart: unless-stopped
     depends_on:
       - gateway
     ports:
@@ -226,3 +271,4 @@ volumes:
   sqlserver-data:
   rabbitmq-data:
   provider-uploads:
+  auth-uploads:
